@@ -57,13 +57,6 @@ class LogHandler(logging.Handler):
 
 log.addHandler(LogHandler())
 
-# def read_terminal_output():
-#     process = subprocess.Popen(['tail', '-f', '/path/to/your/logfile.log'], stdout=subprocess.PIPE)
-#     while True:
-#         output = process.stdout.readline().decode('utf-8')
-#         if output:
-#             socketio.emit('terminal_output', {'data': output})
-
 def setup_connection(com_port):
     global global_connection
     baud_rate = 115200
@@ -197,7 +190,6 @@ def update_drone_status(drone_id, msg):
         drone_info["gps_coords"] = (msg.lat / 1e7, msg.lon / 1e7)
 
     cache.set(f'drone_status_{drone_id}', drone_info)
-    # print(f"Updated drone status: {drone_info}")
     Timer(30, check_drone_timeout, [drone_id]).start()
 
 def check_drone_timeout(drone_id):
@@ -241,10 +233,6 @@ def list_ports():
 @app.route('/')
 def index():
     return render_template('test1.html', flight_modes=flight_modes)
-
-# @socketio.on('connect')
-# def handle_connect():
-#     Thread(target=read_terminal_output).start()
 
 @app.route('/set_com_port', methods=['POST'])
 def set_com_port():
