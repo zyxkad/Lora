@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUAV</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        form {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        
+        input[type="color"] {
+            width: 100%;
+            height: 38px;
+            border: 3px solid white;
+            appearance: none;
+            cursor: pointer;
+            padding: 0;
+            background: none;
+            box-sizing: border-box;
+            box-shadow: 0 0 0 1px #ccc;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .control-group {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .control-group form {
+            margin: 0;
+        }
+
+        .control-group button {
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .container {
+            width: 80%;
+            margin: auto;
+        }
+
+        .flex-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            height: 100vh;
+            overflow: visible;
+        }
+
+        .left-column {
+            flex: 2.5;
+            min-width: 300px;
+            margin: 10px;
+        }
+
+        .right-column {
+            flex: 1;
+            min-width: 300px;
+            margin: 10px;
+        }
+
+        .left-column {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            height: 130vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .control-group, form {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        form, .control-group {
+            width: 100%;
+        }
+
+        .block {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border: none;
+            margin-bottom: 5px;
+            cursor: pointer;
+            width: 80px;
+            height: 110px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 10px;
+        }
+
+        .block.selected {
+            background-color: rgb(244, 244, 80);
+        }
+
+        .circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .status-text {
+            width: 70px;
+            height: 25px;
+            font-size: 14px;
+            color: white;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 10px;
+            margin-bottom: 5px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        .background-green {
+            background-color: green;
+        }
+
+        .background-gray {
+            background-color: gray;
+        }
+
+        .voltage {
+            color: green;
+            font-size: 14px;
+            font-weight: bold;
+            min-height: 20px;
+        }
+
+        .frozen-header {
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            grid-column: span 8;
+        }
+
+        .frozen-header .circle {
+            margin-right: 10px;
+        }
+
+        .frozen-header .form-container {
+            display: flex;
+            flex: 0.9;
+            justify-content: flex-end;
+        }
+
+        .frozen-header form {
+            display: flex;
+            align-items: center;
+            width: 50%;
+            box-shadow: none;
+            padding: 0;
+            background: none;
+            margin: 0;
+        }
+
+        .frozen-header label {
+            margin-right: 10px;
+            margin-bottom: 0;
+        }
+
+        .frozen-header select {
+            width: 60%;
+        }
+
+        .frozen-header button {
+            width: 30%;
+        }
+
+        .frozen-header form {
+            gap: 10px;
+        }
+
+        .rtk-status {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: none;
+            margin-top: 10px;
+        }
+
+        .rtk-status div {
+            margin-bottom: 5px;
+        }
+
+        .drone-count {
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="flex-container">
+            <div class="left-column">
+                <div class="frozen-header">
+                    <div class="drone-count">
+                        <div class="circle background-green"></div>
+                        <span class="voltage" id="connectedDronesCount">0</span>
+                    </div>
+                    <!-- <div class="rtk-status">
+                        <div>Satellites Visible: <span id="satellitesVisible">0</span></div>
+                        <div>RTK Status: <span id="rtkStatus">Surveying</span></div>
+                    </div> -->
+                    <!-- <div class="form-container"> -->
+                        <form id="setComPortForm" action="/set_com_port" method="post">
+                            <label for="com_port">Select Port:</label>
+                            <select name="com_port" id="com_port">
+                            </select>
+                            <button type="submit">Set Port</button>
+                        </form>
+                    <!-- </div> -->
+                </div>
+                
+                
+                {% for i in range(1, 256) %}
+                <div class="block" id="block{{ i }}" onclick="selectBlock('{{ i }}')">
+                    <div class="circle {% if i in drone_ids %}background-green{% else %}background-gray{% endif %}">
+                        <span class="block-number">{{ i }}</span>
+                    </div>
+                    <span class="status-text {% if i in drone_ids %}background-green{% else %}background-gray{% endif %}" id="status{{ i }}">{% if i in drone_ids %}READY{% else %}MISSED{% endif %}</span>
+                    <span class="voltage" id="battery{{ i }}"></span>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="right-column">
+                <form id="setRtkPortForm" onsubmit="return setRtkPort()">
+                    <label for="rtk_com_port">RTK Port:</label>
+                    <select name="rtk_com_port" id="rtk_com_port">
+                    </select>
+                    <label for="baudrate">Baudrate:</label>
+                    <select id="baudrate" name="baudrate">
+                        <option value="9600">9600</option>
+                        <option value="57600">57600</option>
+                    </select>
+                    <button type="submit">Set RTK Port</button>
+                </form>
+
+                <form id="setColorForm" onsubmit="return submitSetColorForm()">
+                    <label for="colorPicker">Color:</label>
+                    <input type="color" id="colorPicker" name="color" value="#ff0000">
+                    <label for="duration">Duration (ms):</label>
+                    <input type="number" id="duration" name="duration" value="500" min="0"><br>
+                    <label for="flashes">Flashes:</label>
+                    <input type="number" id="flashes" name="flashes" value="1" min="1"><br>
+                    <button type="submit">Set Light Flash</button>
+                    <button onclick="return executeScript('/change_color', 'Change Color')">Change Color</button>
+                </form>
+                <div class="control-group">
+                    <button onclick="turnOnLight()">Turn On Light</button>
+                    <button onclick="turnOffLight()">Turn Off Light</button>
+                </div>
+                <div class="control-group">
+                    <button onclick="return executeScript('/rtl', 'RTL')">Return to Launch</button>
+                    <button onclick="return executeScript('/takeOff', 'TAKEOFF')">Take Off</button>
+                    <button onclick="return executeScript('/land', 'LAND')">Land</button>
+                    <!-- <button onclick="return executeScript('/guidedControl', 'GUIDEDCONTROL')">Guide Mode Control</button> -->
+                </div>
+                <form id="changeModeForm" action="/change_mode" method="post">
+                    <label for="modeSelect">Select Flight Mode:</label>
+                    <select name="mode" id="modeSelect">
+                        {% for mode_id, mode_name in flight_modes.items() %}
+                            <option value="{{ mode_id }}">{{ mode_id }}-{{ mode_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" onclick="submitChangeMode()">Change Mode</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedBlockId = "all";
+        let batteryStatusInterval;
+
+        function executeScript(actionUrl, actionName) {
+            const action = () => {
+                fetch(actionUrl, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(actionName + " script executed successfully!\n" + data.message);
+                    } else {
+                        alert("Error executing " + actionName + ":\n" + data.message);
+                    }
+                })
+                .catch(error => alert("Error: " + error));
+            };
+            confirmAndExecute(actionName, action);
+            return false;
+        }
+
+        function postFormData(actionUrl, formData, actionName) {
+            const action = () => {
+                fetch(actionUrl, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(actionName + " successfully!\n" + data.message);
+                    } else {
+                        alert("Error: " + data.message);
+                    }
+                })
+                .catch(error => alert("Error: " + error));
+            };
+            confirmAndExecute(actionName, action);
+            return false;
+        }
+
+        function submitChangeMode() {
+            var form = document.getElementById('changeModeForm');
+            var formData = new FormData(form);
+            const action = () => {
+                fetch('/change_mode', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Mode changed successfully!\n" + data.message);
+                    } else {
+                        alert("Error changing mode:\n" + data.message);
+                    }
+                })
+                .catch(error => alert("Error: " + error));
+            };
+            confirmAndExecute("Change Flight Mode", action);
+        }
+
+        function turnOnLight() {
+            const action = () => {
+                fetch('/turn_on_light', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => alert(data.message))
+                .catch(error => alert('Error: ' + error));
+            };
+            confirmAndExecute("Turn On Light", action);
+        }
+
+        function turnOffLight() {
+            const action = () => {
+                fetch('/turn_off_light', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => alert(data.message))
+                .catch(error => alert('Error: ' + error));
+            };
+            confirmAndExecute("Turn Off Light", action);
+        }
+
+        document.getElementById('setColorForm').onsubmit = function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+            var data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+
+            data['droneId'] = selectedBlockId;
+            
+            const action = () => {
+                fetch('/set_color', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Set Light Flash successfully!\n" + data.message);
+                    } else {
+                        alert("Error: " + data.message);
+                    }
+                })
+                .catch(error => alert("Error: " + error));
+            };
+            confirmAndExecute("Set Light Flash", action);
+        };
+
+        document.getElementById('changeModeForm').onsubmit = function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+            postFormData('/change_mode', formData, 'Change Flight Mode');
+        };
+
+        function selectBlock(blockId) {
+            blockId = parseInt(blockId);
+            const selectedBlock = document.getElementById('block' + blockId);
+            if (selectedBlock.classList.contains('selected')) {
+                selectedBlock.classList.remove('selected');
+                selectedBlockId = "all";
+            } else {
+                const previousSelected = document.querySelector('.block.selected');
+                if (previousSelected) {
+                    previousSelected.classList.remove('selected');
+                }
+                selectedBlock.classList.add('selected');
+                selectedBlockId = blockId;
+            }
+            sendSelectedBlockId();
+        }
+
+        function sendSelectedBlockId() {
+            fetch('/selected_block', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ droneId: selectedBlockId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Server response:", data.message);
+            })
+            .catch(error => console.error('Error:', error));
+        }
+        
+        function confirmAndExecute(action, actionFunction) {
+            if (selectedBlockId === "all") {
+                if (confirm("目前是发送给所有无人机，是否继续？")) {
+                    actionFunction();
+                }
+            } else {
+                actionFunction();
+            }
+        }
+
+        function updateBatteryStatus() {
+            fetch('/get_battery_status', { method: 'GET' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const batteryStatuses = data.battery_statuses;
+                        let connectedDronesCount = 0;
+                        for (let i = 1; i <= 255; i++) {
+                            const batteryLevelElement = document.getElementById('battery' + i);
+                            const statusElement = document.getElementById('status' + i);
+                            const circleElement = document.getElementById('block' + i).querySelector('.circle');
+                            const batteryInfo = batteryStatuses[i];
+                            if (batteryInfo) {
+                                connectedDronesCount++;
+                                batteryLevelElement.textContent = `${batteryInfo.voltage}V`;
+                                statusElement.classList.add('background-green');
+                                statusElement.classList.remove('background-gray');
+                                statusElement.textContent = 'READY';
+                                circleElement.classList.add('background-green');
+                                circleElement.classList.remove('background-gray');
+                            } else {
+                                batteryLevelElement.textContent = ``;
+                                statusElement.classList.add('background-gray');
+                                statusElement.classList.remove('background-green');
+                                statusElement.textContent = 'MISSED';
+                                circleElement.classList.add('background-gray');
+                                circleElement.classList.remove('background-green');
+                            }
+                        }
+                        document.getElementById('connectedDronesCount').textContent = connectedDronesCount;
+                    } else {
+                        console.error('Failed to fetch battery status:', data.message);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        document.getElementById('setComPortForm').onsubmit = function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+            fetch('/set_com_port', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    batteryStatusInterval = setInterval(updateBatteryStatus, 30000);
+                } else {
+                    alert("Error setting COM port: " + data.message);
+                }
+            })
+            .catch(error => alert("Error: " + error));
+        };
+
+        document.getElementById('setRtkPortForm').onsubmit = function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+            fetch('/set_rtk_port', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    // setInterval(updateRtkStatus, 2000);
+                } else {
+                    alert("Error setting RTK port: " + data.message);
+                }
+            })
+            .catch(error => alert("Error: " + error));
+        };
+
+        function updateRtkStatus() {
+            fetch('/get_rtk_status', { method: 'GET' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const rtkStatus = data.rtk_status;
+                        document.getElementById('satellitesVisible').textContent = rtkStatus.satellites_visible;
+                        document.getElementById('rtkStatus').textContent = rtkStatus.survey_in_progress ? 'Surveying' : `RTK Precision: ${rtkStatus.rtk_precision}`;
+                    } else {
+                        console.error('Failed to fetch RTK status:', data.message);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            populateComPorts();
+            populateRtkPorts();
+        });
+
+        function populateComPorts() {
+            fetch('/list_ports')
+                .then(response => response.json())
+                .then(data => {
+                    const comPortSelect = document.getElementById('com_port');
+                    data.forEach(port => {
+                        const option = document.createElement('option');
+                        option.value = port.device;
+                        option.textContent = port.description;
+                        comPortSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function populateRtkPorts() {
+            fetch('/list_ports')
+                .then(response => response.json())
+                .then(data => {
+                    const rtkPortSelect = document.getElementById('rtk_com_port');
+                    data.forEach(port => {
+                        const option = document.createElement('option');
+                        option.value = port.device;
+                        option.textContent = port.description;
+                        rtkPortSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>

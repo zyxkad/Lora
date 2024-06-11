@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skybrush Live Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #2f2f2f;
+            color: #fff;
+        }
+        .header {
+            background-color: #333;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header div {
+            display: flex;
+            align-items: center;
+        }
+        .header img {
+            width: 30px;
+            margin-right: 10px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            height: calc(100vh - 50px);
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #444;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #555;
+            text-align: center;
+            border-radius: 5px;
+        }
+        .sidebar a:hover {
+            background-color: #666;
+        }
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+        .top-bar {
+            background-color: #333;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .top-bar div {
+            display: flex;
+            align-items: center;
+        }
+        .top-bar img {
+            width: 20px;
+            margin-right: 10px;
+        }
+        .content {
+            display: flex;
+            flex: 1;
+            padding: 10px;
+            background-color: #555;
+            margin-top: 10px;
+        }
+        .left-panel, .right-panel {
+            flex: 1;
+            background-color: #666;
+            margin: 5px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .left-panel table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .left-panel table, .left-panel th, .left-panel td {
+            border: 1px solid #777;
+        }
+        .left-panel th, .left-panel td {
+            padding: 8px;
+            text-align: left;
+        }
+        .right-panel .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .right-panel .controls button {
+            margin: 10px;
+            padding: 10px;
+            width: 80%;
+            background-color: #888;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .right-panel .controls button:hover {
+            background-color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <img src="icon.png" alt="Icon">
+            <h1>Skybrush Live</h1>
+        </div>
+        <div>
+            <span>Status: Connected</span>
+        </div>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <a href="#">Map</a>
+            <a href="#">3D View</a>
+            <a href="#">Layers</a>
+            <a href="#">Features</a>
+            <a href="#">UAVs</a>
+            <a href="#">Beacons</a>
+            <a href="#">Show Control</a>
+            <a href="#">Light Control</a>
+            <a href="#">Clocks</a>
+            <a href="#">Locations</a>
+            <a href="#">Field Notes</a>
+            <a href="#">Event Log</a>
+        </div>
+        <div class="main">
+            <div class="top-bar">
+                <div>
+                    <img src="uav.png" alt="UAV Icon">
+                    <span>UAVs Status</span>
+                </div>
+                <div>
+                    <span>20:17 in 6m</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="left-panel">
+                    <table>
+                        <tr>
+                            <th>ID</th>
+                            <th>sID</th>
+                            <th>Status</th>
+                            <th>Mode</th>
+                            <th>Battery</th>
+                            <th>GPS</th>
+                            <th>Position</th>
+                            <th>AMSL</th>
+                            <th>AGL</th>
+                            <th>Hdg</th>
+                            <th>Details</th>
+                        </tr>
+                        <!-- Sample row -->
+                        <tr>
+                            <td>01</td>
+                            <td>RTK</td>
+                            <td>Performing</td>
+                            <td>SHOW</td>
+                            <td>12.0V</td>
+                            <td>RTK</td>
+                            <td>35.36326129</td>
+                            <td>611.3m</td>
+                            <td>27.2m</td>
+                            <td>87.1</td>
+                            <td>Performing show</td>
+                        </tr>
+                        <!-- Add more rows as needed -->
+                    </table>
+                </div>
+                <div class="right-panel">
+                    <div class="controls">
+                        <button>ARM ALL</button>
+                        <button>DISARM ALL</button>
+                        <button>HOLD ALL</button>
+                        <button>LAND ALL</button>
+                        <button>SHUTDOWN ALL</button>
+                        <button>RTH ALL</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
