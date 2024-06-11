@@ -441,7 +441,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const menuButton = document.getElementById('menuButton');
