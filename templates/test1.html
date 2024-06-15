@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sidebar Example</title>
     <style>
-        /* 样式内容保持不变 */
         body {
             margin: 0;
             font-family: 'Roboto', sans-serif;
@@ -283,29 +282,9 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 90px; /* 上下两行各占50% */
+            height: 90px; 
             margin: 15px;
         }
-        /* .mode-change div,
-        .set-mode div {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-        } */
-
-        /* #setModeButton {
-            padding: 15px;
-            border-radius: 10px;
-            width: 30%;
-            font-family: 'Roboto', sans-serif;
-            color: white;
-            background-color: #444;
-            cursor: pointer;
-            display: inline-block;
-            text-align: center;
-            transition: background-color 0.3s ease, transform 0.3s ease;
-        } */
 
         #setModeButton:hover {
             background-color: #555;
@@ -343,7 +322,6 @@
             display: none;
         }
         .bottom-left-content {
-            /* height: 80%; */
             padding: 10px;
         }
 
@@ -443,7 +421,7 @@
         .color-picker {
             display: flex;
             justify-content: space-around;
-            height: 30%; /* 上层占30% */
+            height: 30%;
             margin: 20px;
         }
 
@@ -467,14 +445,14 @@
         .actions {
             display: flex;
             justify-content: space-around;
-            height: 20%; /* 中层占30% */
+            height: 20%;
             margin: 20px;
         }
 
         .single-action {
             display: flex;
             justify-content: center;
-            height: 20%; /* 下层占30% */
+            height: 20%;
             margin: 20px;
         }
 
@@ -482,7 +460,6 @@
             padding: 15px;
             border-radius: 10px;
             width: 30%;
-            /* height: 20%; */
             background-color: #444;
             cursor: pointer;
             display: inline-block;
@@ -555,9 +532,7 @@
                     <div>GPS Coordinates</div>
                     <button id="selectAllButton">Select All</button>
                 </div>
-                <div id="droneInfoContainer">
-                    <!-- 动态无人机信息列会在这里插入 -->
-                </div>
+                <div id="droneInfoContainer"></div>
             </div>
             <div class="bottom-block">
                 <div class="bottom-left fixed">
