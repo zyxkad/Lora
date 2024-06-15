@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sidebar Example</title>
     <style>
+        /* 样式内容保持不变 */
         body {
             margin: 0;
             font-family: 'Roboto', sans-serif;
@@ -219,8 +220,8 @@
             display: flex;
             flex-direction: column;
             transition: margin-left 0.3s ease;
-            height: calc(100vh - 50px); /* 限制主内容的高度 */
-            overflow: hidden; /* 隐藏超出部分 */    
+            height: calc(100vh - 50px);
+            overflow: hidden;
         }
 
         #mainContent.expanded {
@@ -239,7 +240,7 @@
 
         .header-row, .drone-info {
             display: grid;
-            grid-template-columns: 30px 40px 120px 70px 70px 120px 500px;
+            grid-template-columns: 30px 40px 120px 70px 70px 120px 500px 120px;
             padding: 10px;
             font-size: 16px;
             font-weight: bold;
@@ -253,13 +254,63 @@
             padding: 0px;
         }
 
+        .header-row button {
+            background-color: #444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+            width: 200px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .header-row button:hover {
+            transform: scale(1.05);
+            background-color: #555;
+        }       
+
         .bottom-block {
             flex-basis: 40%;
             display: flex;
             overflow: hidden;
             height: 100%;
         }
+        .mode-change,
+        .set-mode {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 90px; /* 上下两行各占50% */
+            margin: 15px;
+        }
+        /* .mode-change div,
+        .set-mode div {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        } */
 
+        /* #setModeButton {
+            padding: 15px;
+            border-radius: 10px;
+            width: 30%;
+            font-family: 'Roboto', sans-serif;
+            color: white;
+            background-color: #444;
+            cursor: pointer;
+            display: inline-block;
+            text-align: center;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        } */
+
+        #setModeButton:hover {
+            background-color: #555;
+            transform: scale(1.05);
+        }
         .bottom-left {
             margin-right: 10px;
             flex: 1;
@@ -267,10 +318,37 @@
             border-radius: 10px;
             transition: margin-left 0.3s ease, width 0.3s ease;
         }
+        .bottom-left select {
+            height: 50%;
+            margin-bottom: 10px;
+            width: 400px;
+            padding: 5px;
+            background-color: #3d3d3d;
+            color: #ffffff;
+            border: 1px solid #555;
+            border-radius: 5px;
+        }
+        .bottom-left button {
+            height: 50%;
+            width: 120px;
+            padding: 10px;
+            background-color: #444;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .hidden {
+            display: none;
+        }
+        .bottom-left-content {
+            /* height: 80%; */
+            padding: 10px;
+        }
 
-        .bottom-left.fixed {
-            margin-right: 5px;
-            width: calc(50% - 10px);
+        .bottom-left.hidden {
+            display: none;
         }
 
         .bottom-right {
@@ -361,6 +439,62 @@
             background-color: #2b2b2b;
             border-radius: 10px;
         }
+
+        .color-picker {
+            display: flex;
+            justify-content: space-around;
+            height: 30%; /* 上层占30% */
+            margin: 20px;
+        }
+
+        .color-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            display: inline-block;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .color-button:hover {
+            transform: scale(1.1);
+        }
+
+        .color-button.selected {
+            box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.8);
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-around;
+            height: 20%; /* 中层占30% */
+            margin: 20px;
+        }
+
+        .single-action {
+            display: flex;
+            justify-content: center;
+            height: 20%; /* 下层占30% */
+            margin: 20px;
+        }
+
+        .action-button {
+            padding: 15px;
+            border-radius: 10px;
+            width: 30%;
+            /* height: 20%; */
+            background-color: #444;
+            cursor: pointer;
+            display: inline-block;
+            text-align: center;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .action-button:hover {
+            background-color: #555;
+            transform: scale(1.05);
+        }
+
     </style>
 </head>
 <body>
@@ -419,24 +553,64 @@
                     <div>Current</div>
                     <div>RTK Status</div>
                     <div>GPS Coordinates</div>
+                    <button id="selectAllButton">Select All</button>
                 </div>
                 <div id="droneInfoContainer">
                     <!-- 动态无人机信息列会在这里插入 -->
                 </div>
             </div>
             <div class="bottom-block">
-                <div class="bottom-left fixed"></div>
+                <div class="bottom-left fixed">
+                    <div id="lightControlContent" class="bottom-left-content hidden">
+                        <div class="color-picker">
+                            <div class="color-button" style="background-color: red;" data-r="255" data-g="0" data-b="0"></div>
+                            <div class="color-button" style="background-color: blue;" data-r="0" data-g="0" data-b="255"></div>
+                            <div class="color-button" style="background-color: green;" data-r="0" data-g="255" data-b="0"></div>
+                            <div class="color-button" style="background-color: yellow;" data-r="255" data-g="255" data-b="0"></div>
+                            <div class="color-button" style="background-color: white;" data-r="255" data-g="255" data-b="255"></div>
+                        </div>
+                        <div class="actions">
+                            <div class="action-button" id="flashButton">Flash</div>
+                            <div class="action-button" id="turnOnButton">Turn On</div>
+                        </div>
+                        <div class="single-action">
+                            <div class="action-button" id="turnOffButton">Turn Off</div>
+                        </div>
+                    </div>
+                    <div id="rtkContent" class="bottom-left-content hidden">
+                        <p>RTK settings will be displayed here.</p>
+                    </div>
+                    <div id="modeChangeContent" class="bottom-left-content hidden">
+                        <div class="mode-change">
+                            <select id="modeSelect">
+                                <option value="0">STABILIZE</option>
+                                <option value="2">ALTHOLD</option>
+                                <option value="3">AUTO</option>
+                                <option value="4">GUIDED</option>
+                                <option value="5">LOITER</option>
+                                <option value="6">RTL</option>
+                                <option value="9">LAND</option>
+                            </select>
+                        </div>
+                        <div class="set-mode">
+                            <button id="setModeButton">Set Mode</button>
+                        </div>
+                    </div>
+                    <div id="motorTestContent" class="bottom-left-content hidden">
+                        <p>Motor test settings will be displayed here.</p>
+                    </div>
+                </div>
                 <div class="bottom-right expanded">
                     <div id="terminalOutput" class="bottom-right-content"></div>
                 </div>
-            </div>
+            </div>            
         </div>
         <div id="sidebar">
             <div id="sidebarContent">
-                <button class="sidebarButton">RTK</button>
-                <button class="sidebarButton">Light Control</button>
-                <button class="sidebarButton">Mode Change</button>
-                <button class="sidebarButton">Motor Test</button>
+                <button class="sidebarButton" id="rtkButton">RTK</button>
+                <button class="sidebarButton" id="lightControlButton">Light Control</button>
+                <button class="sidebarButton" id="modeChangeButton">Mode Change</button>
+                <button class="sidebarButton" id="motorTestButton">Motor Test</button>
             </div>
         </div>
     </div>
@@ -497,6 +671,28 @@
                     dropdown.style.left = (rect.right - dropdown.offsetWidth) + 'px';
                 }
             }
+
+            const sidebarButtons = document.querySelectorAll('.sidebarButton');
+            const allContents = document.querySelectorAll('.bottom-left-content');
+
+            sidebarButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = button.id.replace('Button', 'Content');
+                    const targetContent = document.getElementById(targetId);
+
+                    if (targetContent.classList.contains('hidden')) {
+                        allContents.forEach(content => content.classList.add('hidden'));
+                        targetContent.classList.remove('hidden');
+                    } else {
+                        targetContent.classList.add('hidden');
+                    }
+                });
+            });
+
+            document.getElementById('selectAllButton').addEventListener('click', function() {
+                selectedDroneId = 'all';
+                console.log('Selected Drone ID:', selectedDroneId);
+            });
 
             document.addEventListener('click', function(event) {
                 const activeDropdown = document.querySelector('.dropdown.active');
@@ -588,7 +784,7 @@
                 const gps_coords = document.createElement('div');
                 const lat = drone.gps_coords[0];
                 const lon = drone.gps_coords[1];
-                gps_coords.textContent = (lat !== 0 && lon !== 0) ? `${lat.toFixed(7)}, ${lon.toFixed(7)}` : '--';
+                gps_coords.textContent = (lat !== 0 && lon !== 0) ? `${lat.toFixed(7)}, ${lon.toFixed(7)}` : '--, --';
 
                 droneInfo.appendChild(statusCircle);
                 droneInfo.appendChild(droneId);
@@ -630,7 +826,10 @@
 
                     const lat = drone.gps_coords[0];
                     const lon = drone.gps_coords[1];
-                    gps_coords.textContent = (lat !== 0 && lon !== 0) ? `${lat.toFixed(7)}, ${lon.toFixed(7)}` : '--';
+                    gps_coords.textContent = (lat !== 0 && lon !== 0) ? `${lat.toFixed(7)}, ${lon.toFixed(7)}` : '--, --';
+                    if (drone.id === selectedDroneId) {
+                        droneInfo.classList.add('selected');
+                    }
                 } else {
                     addDroneInfo(drone);
                 }
@@ -660,21 +859,29 @@
                     .then(data => {
                         if (data.success) {
                             const batteryStatuses = Object.values(data.battery_statuses);
-                            document.getElementById('droneInfoContainer').innerHTML = ''; // 清空容器
+                            const droneInfoContainer = document.getElementById('droneInfoContainer');
+                            droneInfoContainer.innerHTML = ''; // 清空容器
+
+                            // 在更新信息之前保留选中的无人机行的ID
+                            const previouslySelectedDroneId = selectedDroneId;
+
                             batteryStatuses.forEach(updateDroneInfo);
+
+                            // 恢复选中的无人机行的高亮状态
+                            if (previouslySelectedDroneId) {
+                                const selectedDroneElement = document.querySelector(`.drone-info[data-drone-id='${previouslySelectedDroneId}']`);
+                                if (selectedDroneElement) {
+                                    selectedDroneElement.classList.add('selected');
+                                }
+                            }
+
                             updateTopbarInfo(batteryStatuses);
                         }
                     });
             }
 
             fetchDroneData();
-            // 每隔15秒获取一次无人机信息
             setInterval(fetchDroneData, 15000);
-
-            // 初次加载时获取无人机信息
-            
-
-            // WebSocket连接
             const socket = io();
 
             socket.on('connect', () => {
@@ -693,6 +900,85 @@
                 newLog.textContent = data.data;
                 terminalOutput.appendChild(newLog);
                 terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            });
+
+            // 处理颜色按钮
+            const colorButtons = document.querySelectorAll('.color-button');
+            let selectedColor = { r: 255, g: 255, b: 255 };
+            colorButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    colorButtons.forEach(btn => btn.classList.remove('selected'));
+                    button.classList.add('selected');
+                    selectedColor = {
+                        r: parseInt(button.getAttribute('data-r')),
+                        g: parseInt(button.getAttribute('data-g')),
+                        b: parseInt(button.getAttribute('data-b'))
+                    };
+                });
+            });
+
+            // 处理 Flash 按钮
+            const flashButton = document.getElementById('flashButton');
+            flashButton.addEventListener('click', function() {
+                sendLightControlCommand(selectedColor, 'flash');
+            });
+
+            // 处理 Turn On 按钮
+            const turnOnButton = document.getElementById('turnOnButton');
+            turnOnButton.addEventListener('click', function() {
+                sendLightControlCommand(selectedColor, 'turn_on');
+            });
+
+            // 处理 Turn Off 按钮
+            const turnOffButton = document.getElementById('turnOffButton');
+            turnOffButton.addEventListener('click', function() {
+                sendLightControlCommand({ r: 0, g: 0, b: 0 }, 'turn_off');
+            });
+
+            function sendLightControlCommand(color, action) {
+                const commandData = {
+                    drone_id: selectedDroneId || 'all',
+                    rgb: color,
+                    duration: action === 'flash' ? 500 : 65534,
+                    flashes: action === 'flash' ? 3 : 1
+                };
+
+                fetch('/change_color', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(commandData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Light control command sent:', commandData);
+                    } else {
+                        console.error('Error sending light control command:', data.message);
+                    }
+                });
+            }
+
+            document.getElementById('setModeButton').addEventListener('click', function() {
+                const modeSelect = document.getElementById('modeSelect');
+                const selectedMode = modeSelect.value;
+
+                fetch('/change_mode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({ mode: selectedMode })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Mode change command sent:', selectedMode);
+                    } else {
+                        console.error('Error sending mode change command:', data.message);
+                    }
+                });
             });
         });
     </script>

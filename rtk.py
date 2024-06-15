@@ -54,6 +54,7 @@ class LogHandler(logging.Handler):
     def emit(self, record):
         log_entry = self.format(record)
         socketio.emit('log_message', {'data': log_entry})
+        print(log_entry)
 
 log.addHandler(LogHandler())
 
@@ -241,7 +242,7 @@ def set_com_port():
     setup_connection(com_port)
     thread = Thread(target=listen_to_drones)
     thread.start()
-    socketio.emit('log_message', {'data': f"COM port {com_port} set and listening started."})
+    socketio.emit('log_message', {'data': f"COM port {com_port} set"})
     return jsonify(success=True, message="COM port set and listening started.")
 
 @app.route('/set_rtk_port', methods=['POST'])
@@ -308,7 +309,8 @@ def change_mode():
                 global_connection.target_system,
                 mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
                 mode_id)
-            check_mode_until_changed(global_connection, mode_id)
+            # check_mode_until_changed(global_connection, mode_id)
+            socketio.emit('log_message', {'data': f"Mode change command received: ModeID: {mode_id}  Mode: {flight_modes.get(mode_id, 'Unknown')}"})
             return jsonify(success=True, message="Mode change command sent.")
         except Exception as e:
             return jsonify(success=False, message=str(e))
@@ -332,17 +334,38 @@ def set_color():
 
 @app.route('/change_color', methods=['POST'])
 def change_color():
-    r, g, b = session.get('rgb', (255, 0, 0))
-    duration = session.get('duration', 500)
-    flashes = session.get('flashes', 1)
-    drone_id = session.get('drone_id', '1')
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "message": "Invalid JSON data"})
+    # Ensure color is a list of integers
+    color = data['rgb']
+    duration = data['duration']
+    flashes = data['flashes']
+    drone_id = data.get('drone_id', '1')
+    # session['rgb'] = color
+    # session['duration'] = int(duration)
+    # session['flashes'] = int(flashes)
+    # session['drone_id'] = drone_id
+    r = color['r']
+    g = color['g']
+    b = color['b']
+    duration = int(duration)
+    flashes = int(flashes)
     if drone_id == 'all':
+        socketio.emit('log_message', {'data': f"send to all start"})
         drones = get_drones()
         for d in drones:
+            d = int(d)
             send_led_control_message(d, r, g, b, duration, flashes)
+            socketio.emit('log_message', {'data': f"Color change command received: DroneID: {d}  RGB: ({r}, {g}, {b}), Duration: {duration} ms, Flashes: {flashes}"})
     else:
+        socketio.emit('log_message', {'data': f"send to one start"})
+        drone_id = int(drone_id)
         send_led_control_message(drone_id, r, g, b, duration, flashes)
+        socketio.emit('log_message', {'data': f"Color change command received: DroneID: {drone_id}  RGB: ({r}, {g}, {b}), Duration: {duration} ms, Flashes: {flashes}"})
+
     return jsonify(success=True, message="Color change command sent.")
+
 
 @app.route('/turn_on_light', methods=['POST'])
 def turn_on_light():
