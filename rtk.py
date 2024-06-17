@@ -74,24 +74,7 @@ def listen_to_drones():
             if msg:
                 drone_id = msg.get_srcSystem()
                 update_drone_status(drone_id, msg)
-        time.sleep(0.1)
-
-def check_mode_until_changed(drone, expected_mode, max_attempts=10):
-    print("###################################################")
-    expected_mode_name = flight_modes.get(expected_mode, "Unknown")
-    attempts = 0
-    while attempts < max_attempts:
-        msg = drone.recv_match(type='HEARTBEAT', blocking=True, timeout=3)
-        if msg:
-            current_mode = mavutil.mode_string_v10(msg)
-            if current_mode == expected_mode_name:
-                print("Mode change confirmed.")
-                print("Current Mode:", current_mode)
-                break
-        else:
-            print("No HEARTBEAT message received.")
-        attempts += 1
-        time.sleep(3)
+        # time.sleep(0.1)
 
 def listen_to_rtk():
     global rtk_status
@@ -180,7 +163,6 @@ def update_drone_status(drone_id, msg):
             "gps_type": "--",
             "gps_coords": ("--", "--")
         }
-
     if msg.get_type() == 'HEARTBEAT':
         drone_info["mode"] = flight_modes.get(msg.custom_mode, "Unknown")
     elif msg.get_type() == 'SYS_STATUS':
@@ -192,6 +174,21 @@ def update_drone_status(drone_id, msg):
 
     cache.set(f'drone_status_{drone_id}', drone_info)
     Timer(30, check_drone_timeout, [drone_id]).start()
+
+def send_motor_test_command(drone_id, motor_instance, throttle):
+    global_connection.mav.command_long_send(
+        drone_id,
+        1,
+        mavutil.mavlink.MAV_CMD_DO_MOTOR_TEST,
+        0,
+        motor_instance,
+        mavutil.mavlink.MOTOR_TEST_THROTTLE_PERCENT,
+        throttle,
+        10,
+        0,
+        0,
+        0
+    )
 
 def check_drone_timeout(drone_id):
     current_time = time.time()
@@ -258,94 +255,70 @@ def set_rtk_port():
     socketio.emit('log_message', {'data': f"RTK port {rtk_com_port} set with baudrate {baudrate} and listening started."})
     return jsonify(success=True, message="RTK port set and listening started.")
 
-@app.route('/rtl', methods=['POST'])
-def rtl():
+@app.route('/motor_test', methods=['POST'])
+def motor_test():
+    motor_id = request.form['motor_id']
+    drone_id = request.form.get('drone_id')
+    throttle = float(request.form['throttle'])
+    print(f"Motor test command received: DroneID: {drone_id}  MotorID: {motor_id}  Throttle: {throttle}")
     if global_connection:
-        try:
-            global_connection.mav.command_long_send(
-                global_connection.target_system,
-                global_connection.target_component,
-                mavutil.mavlink.MAV_CMD_NAV_RETURN_TO_LAUNCH,
-                0, 0, 0, 0, 0, 0, 0, 0)
-            return jsonify(success=True, message="RTL command sent.")
-        except Exception as e:
-            return jsonify(success=False, message=str(e))
-    return jsonify(success=False, message="Connection not established.")
-
-@app.route('/takeOff', methods=['POST'])
-def takeOff():
-    if global_connection:
-        try:
-            global_connection.mav.command_long_send(
-                global_connection.target_system,
-                global_connection.target_component,
-                mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
-                0, 0, 0, 0, 0, 0, 0, 0)
-            return jsonify(success=True, message="Take Off command sent.")
-        except Exception as e:
-            return jsonify(success=False, message=str(e))
-    return jsonify(success=False, message="Connection not established.")
-
-@app.route('/land', methods=['POST'])
-def land():
-    if global_connection:
-        try:
-            global_connection.mav.command_long_send(
-                global_connection.target_system,
-                global_connection.target_component,
-                mavutil.mavlink.MAV_CMD_NAV_LAND,
-                0, 0, 0, 0, 0, 0, 0, 0)
-            return jsonify(success=True, message="Land command sent.")
-        except Exception as e:
-            return jsonify(success=False, message=str(e))
-    return jsonify(success=False, message="Connection not established.")
+        if drone_id == 'all':
+            socketio.emit('log_message', {'data': f"send to all drones start"})
+            drones = get_drones()
+            for d in drones:
+                d = int(d)
+                if motor_id == 'all':
+                    for motor_instance in range(1, 5):
+                        send_motor_test_command(d, motor_instance, throttle)
+                        # time.sleep(0.2)
+                else:
+                    send_motor_test_command(d, int(motor_id), throttle)
+        else:
+            if motor_id == 'all':
+                for motor_instance in range(1, 5):
+                    send_motor_test_command(int(drone_id), motor_instance, throttle)
+                    # time.sleep(0.1)
+            else:
+                send_motor_test_command(int(drone_id), int(motor_id), throttle)
+        return jsonify(success=True, message="Motor test command sent.")
 
 @app.route('/change_mode', methods=['POST'])
 def change_mode():
     mode_id = int(request.form['mode'])
+    drone_id = request.form.get('drone_id')
     if global_connection:
         try:
-            global_connection.mav.set_mode_send(
-                global_connection.target_system,
-                mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
-                mode_id)
-            # check_mode_until_changed(global_connection, mode_id)
-            socketio.emit('log_message', {'data': f"Mode change command received: ModeID: {mode_id}  Mode: {flight_modes.get(mode_id, 'Unknown')}"})
+            if drone_id == 'all':
+                socketio.emit('log_message', {'data': f"send to all start"})
+                drones = get_drones()
+                for d in drones:
+                    d = int(d)
+                    global_connection.mav.set_mode_send(
+                        d,
+                        mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
+                        mode_id)
+                    socketio.emit('log_message', {'data': f"Mode change command received: DroneID: {drone_id}  ModeID: {mode_id}  Mode: {flight_modes.get(mode_id, 'Unknown')}"})
+            else:
+                drone_id = int(drone_id)
+                global_connection.mav.set_mode_send(
+                    drone_id,
+                    mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
+                    mode_id)
+                socketio.emit('log_message', {'data': f"Mode change command received: DroneID: {drone_id}  ModeID: {mode_id}  Mode: {flight_modes.get(mode_id, 'Unknown')}"})
             return jsonify(success=True, message="Mode change command sent.")
         except Exception as e:
             return jsonify(success=False, message=str(e))
     return jsonify(success=False, message="Connection not established.")
-
-@app.route('/set_color', methods=['POST'])
-def set_color():
-    data = request.get_json()
-    if not data:
-        return jsonify({"success": False, "message": "Invalid JSON data"})
-    color_hex = data['color']
-    duration = int(data['duration'])
-    flashes = int(data['flashes'])
-    drone_id = data.get('droneId', 'all')
-    r, g, b = int(color_hex[1:3], 16), int(color_hex[3:5], 16), int(color_hex[5:7], 16)
-    session['rgb'] = (r, g, b)
-    session['duration'] = duration
-    session['flashes'] = flashes
-    session['drone_id'] = drone_id
-    return jsonify({"success": True, "message": f"Color set to RGB: ({r}, {g}, {b}), Duration: {duration} ms, Flashes: {flashes}"})
 
 @app.route('/change_color', methods=['POST'])
 def change_color():
     data = request.get_json()
     if not data:
         return jsonify({"success": False, "message": "Invalid JSON data"})
-    # Ensure color is a list of integers
     color = data['rgb']
     duration = data['duration']
     flashes = data['flashes']
     drone_id = data.get('drone_id', '1')
-    # session['rgb'] = color
-    # session['duration'] = int(duration)
-    # session['flashes'] = int(flashes)
-    # session['drone_id'] = drone_id
     r = color['r']
     g = color['g']
     b = color['b']
@@ -365,29 +338,6 @@ def change_color():
         socketio.emit('log_message', {'data': f"Color change command received: DroneID: {drone_id}  RGB: ({r}, {g}, {b}), Duration: {duration} ms, Flashes: {flashes}"})
 
     return jsonify(success=True, message="Color change command sent.")
-
-
-@app.route('/turn_on_light', methods=['POST'])
-def turn_on_light():
-    drone_id = session.get('drone_id', '1')
-    if drone_id == 'all':
-        drones = get_drones()
-        for d in drones:
-            send_led_control_message(d, 0, 255, 0, 65534, 1)
-    else:
-        send_led_control_message(drone_id, 0, 255, 0, 65534, 1)
-    return jsonify(success=True, message="Turn on light command sent.")
-
-@app.route('/turn_off_light', methods=['POST'])
-def turn_off_light():
-    drone_id = session.get('drone_id', '1')
-    if drone_id == 'all':
-        drones = get_drones()
-        for d in drones:
-            send_led_control_message(d, 0, 0, 0, 65534, 1)
-    else:
-        send_led_control_message(drone_id, 0, 0, 0, 65534, 1)
-    return jsonify(success=True, message="Turn off light command sent.")
 
 @app.route('/get_battery_status', methods=['GET'])
 def get_battery_status():

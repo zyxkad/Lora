@@ -472,13 +472,99 @@
             transform: scale(1.05);
         }
 
+        .warning {
+            text-align: center;
+            color: red;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        .motor-test-controls {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .control-group label {
+            margin-bottom: 5px;
+        }
+
+        .motor-test-actions {
+            display: flex;
+            justify-content: center;
+        }
+
+        .motor-test-actions button {
+            padding: 10px 20px;
+            height: 45px;
+            background-color: #444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .motor-test-actions button:hover {
+            background-color: #555;
+        }
+        .control-group select {
+            width: 200px;
+            height: 40px;
+        }
+        .modal {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background-color: #333;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+        }
+
+        .modal-content button {
+            margin: 10px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #444;
+            color: white;
+        }
+
+        .modal-content button:hover {
+            background-color: #555;
+        }
+
+
     </style>
 </head>
 <body>
     <div id="container">
         <div id="topbar">
             <button id="menuButton">☰</button>
-            <span>My Application</span>
+            <!-- <span>AUAV Ground Control Station</span> -->
             <div class="topbar-item-container">
                 <div class="topbar-info-item drone-count">
                     <div>
@@ -572,7 +658,44 @@
                         </div>
                     </div>
                     <div id="motorTestContent" class="bottom-left-content hidden">
-                        <p>Motor test settings will be displayed here.</p>
+                        <div class="warning">
+                            <p>此功能为电机测试，请确保没有螺旋桨安装。</p>
+                        </div>
+                        <div class="motor-test-controls">
+                            <div class="control-group">
+                                <label for="motorIdSelect">Motor ID</label>
+                                <select id="motorIdSelect">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <label for="throttleSelect">Throttle %</label>
+                                <select id="throttleSelect">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="30">30</option>
+                                    <option value="40">40</option>
+                                    <option value="50">50</option>
+                                    <option value="60">60</option>
+                                    <option value="70">70</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="motor-test-actions">
+                            <button id="startMotorTestButton">Start Test</button>
+                        </div>
+                    </div>
+                    <div id="confirmationModal" class="modal hidden">
+                        <div class="modal-content">
+                            <p>请确认没有安装螺旋桨。</p>
+                            <input type="checkbox" id="confirmCheckbox"> 我确认没有安装螺旋桨<br><br>
+                            <button id="confirmButton">确认</button>
+                            <button id="cancelButton">取消</button>
+                        </div>
                     </div>
                 </div>
                 <div class="bottom-right expanded">
@@ -600,7 +723,7 @@
             const bottomLeft = document.querySelector('.bottom-left');
             const bottomRight = document.querySelector('.bottom-right');
             const terminalOutput = document.getElementById('terminalOutput');
-            let selectedDroneId = null;
+            let selectedDroneId = 'all';
 
             menuButton.addEventListener('click', function() {
                 sidebar.classList.toggle('collapsed');
@@ -777,7 +900,7 @@
 
                     if (droneInfo.classList.contains('selected')) {
                         droneInfo.classList.remove('selected');
-                        selectedDroneId = null;
+                        selectedDroneId = "all";
                     } else {
                         droneInfo.classList.add('selected');
                         selectedDroneId = drone.id;
@@ -835,14 +958,11 @@
                         if (data.success) {
                             const batteryStatuses = Object.values(data.battery_statuses);
                             const droneInfoContainer = document.getElementById('droneInfoContainer');
-                            droneInfoContainer.innerHTML = ''; // 清空容器
+                            droneInfoContainer.innerHTML = '';
 
-                            // 在更新信息之前保留选中的无人机行的ID
                             const previouslySelectedDroneId = selectedDroneId;
-
                             batteryStatuses.forEach(updateDroneInfo);
 
-                            // 恢复选中的无人机行的高亮状态
                             if (previouslySelectedDroneId) {
                                 const selectedDroneElement = document.querySelector(`.drone-info[data-drone-id='${previouslySelectedDroneId}']`);
                                 if (selectedDroneElement) {
@@ -877,7 +997,6 @@
                 terminalOutput.scrollTop = terminalOutput.scrollHeight;
             });
 
-            // 处理颜色按钮
             const colorButtons = document.querySelectorAll('.color-button');
             let selectedColor = { r: 255, g: 255, b: 255 };
             colorButtons.forEach(button => {
@@ -892,19 +1011,16 @@
                 });
             });
 
-            // 处理 Flash 按钮
             const flashButton = document.getElementById('flashButton');
             flashButton.addEventListener('click', function() {
                 sendLightControlCommand(selectedColor, 'flash');
             });
 
-            // 处理 Turn On 按钮
             const turnOnButton = document.getElementById('turnOnButton');
             turnOnButton.addEventListener('click', function() {
                 sendLightControlCommand(selectedColor, 'turn_on');
             });
 
-            // 处理 Turn Off 按钮
             const turnOffButton = document.getElementById('turnOffButton');
             turnOffButton.addEventListener('click', function() {
                 sendLightControlCommand({ r: 0, g: 0, b: 0 }, 'turn_off');
@@ -944,7 +1060,7 @@
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
                     },
-                    body: new URLSearchParams({ mode: selectedMode })
+                    body: new URLSearchParams({ mode: selectedMode, drone_id: selectedDroneId })
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -954,6 +1070,40 @@
                         console.error('Error sending mode change command:', data.message);
                     }
                 });
+            });
+            document.getElementById('startMotorTestButton').addEventListener('click', function() {
+                const confirmationModal = document.getElementById('confirmationModal');
+                confirmationModal.classList.remove('hidden');
+            });
+
+            document.getElementById('confirmButton').addEventListener('click', function() {
+                const confirmCheckbox = document.getElementById('confirmCheckbox');
+                if (confirmCheckbox.checked) {
+                    const motorId = document.getElementById('motorIdSelect').value;
+                    const throttle = document.getElementById('throttleSelect').value;
+
+                    fetch('/motor_test', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: new URLSearchParams({ motor_id: motorId, throttle: throttle, drone_id: selectedDroneId })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('Motor test command sent:', { motorId, throttle });
+                        } else {
+                            console.error('Error sending motor test command:', data.message);
+                        }
+                    });
+                    confirmationModal.classList.add('hidden');
+                }
+            });
+
+            document.getElementById('cancelButton').addEventListener('click', function() {
+                const confirmationModal = document.getElementById('confirmationModal');
+                confirmationModal.classList.add('hidden');
             });
         });
     </script>
