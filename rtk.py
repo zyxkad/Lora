@@ -5,6 +5,9 @@ from threading import Thread, Timer
 from flask_socketio import SocketIO, emit
 import subprocess
 import logging
+import os
+import csv
+from datetime import datetime
 import serial
 import struct
 import serial.tools.list_ports
@@ -12,6 +15,7 @@ import time
 
 app = Flask(__name__)
 app.secret_key = 'AUAVDRONE'
+os.environ['MAVLINK20'] = '1'
 flight_modes = {
     0: "STABILIZE",
     1: "ACRO",
@@ -40,6 +44,7 @@ flight_modes = {
     27: "AUTO RTL"
 }
 
+#TODO: mavlink v2
 app.config['CACHE_TYPE'] = 'simple'
 cache = Cache(app)
 socketio = SocketIO(app)
@@ -66,6 +71,7 @@ def setup_connection(com_port):
 def setup_rtk_connection(com_port, baud_rate):
     global global_rtk_connection
     global_rtk_connection = serial.Serial(com_port, baudrate=baud_rate, timeout=1)
+    print("2")
 
 def listen_to_drones():
     while True:
@@ -82,6 +88,7 @@ def listen_to_rtk():
         if global_rtk_connection:
             data = global_rtk_connection.read(1024)
             if data:
+                print(f"Received {len(data)} bytes: {data}")
                 try:
                     satellites_visible = data[0]
                     survey_in_progress = data[1] == 1
@@ -95,6 +102,45 @@ def listen_to_rtk():
                     print(f"Error parsing RTK data: {e}")
                 send_rtk_data_to_drones(data)
 
+def set_message_interval(drone_id):
+    if global_connection:
+        global_connection.mav.command_long_send(
+            drone_id,
+            1,
+            mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+            0,
+            291,
+            1000000,
+            0, 0, 0, 0,
+            0
+        )
+        print(f"Message interval set for drone {drone_id}")
+
+def esc_record():
+    current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f'esc_status_{current_time}.csv'
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        
+        writer.writerow(['timestamp', 'drone_id', 'index', 'rpm1', 'rpm2', 'rpm3', 'rpm4', 'voltage1', 'voltage2', 'voltage3', 'voltage4', 'current1', 'current2', 'current3', 'current4'])
+        
+        while True:
+            if global_connection:
+                msg = global_connection.recv_match(type=['ESC_STATUS'], blocking=False)
+                print(f"Received ESC_STATUS message: {msg}")
+                if msg:
+                    
+                    timestamp = msg.time_usec
+                    drone_id = msg.get_srcSystem()
+                    index = msg.index
+                    rpm = msg.rpm
+                    voltage = msg.voltage
+                    current = msg.current
+
+                    writer.writerow([timestamp, drone_id, index] + rpm + voltage + current)
+                    
+                    file.flush()
+                
 def send_rtk_data_to_drones(data):
     if global_connection:
         max_packet_size = 180
@@ -103,7 +149,7 @@ def send_rtk_data_to_drones(data):
             chunk = data[i:i + max_packet_size]
             flags = (sequence_id << 3)
             sequence_id += 1
-
+            #TODO: keep sequence_id and send it twice
             if len(chunk) < max_packet_size:
                 chunk += b'\x00' * (max_packet_size - len(chunk))
 
@@ -115,13 +161,14 @@ def send_rtk_data_to_drones(data):
 
 def read_and_send_rtk_data():
     sequence_id = 0
-    msglen = 180
-
+    msglen = 100
+    #TODO: msglen = 100
     while True:
         data = global_rtk_connection.read(1024)
-        for i in range(0, len(data), msglen * 4):
-            chunk = data[i:i + msglen * 4]
+        for i in range(0, len(data), msglen):
+            chunk = data[i:i + msglen]
             start_time = time.time()
+            print(f"Received {len(chunk)}, GOOD!")
             if (len(chunk) % msglen == 0):
                 msgs = len(chunk) // msglen
             else:
@@ -152,7 +199,7 @@ def read_and_send_rtk_data():
 def update_drone_status(drone_id, msg):
     current_time = time.time()
     last_update_time[drone_id] = current_time
-
+    #TODO: actived drone number wrong
     drone_info = cache.get(f'drone_status_{drone_id}')
     if not drone_info:
         drone_info = {
@@ -173,7 +220,7 @@ def update_drone_status(drone_id, msg):
         drone_info["gps_coords"] = (msg.lat / 1e7, msg.lon / 1e7)
 
     cache.set(f'drone_status_{drone_id}', drone_info)
-    Timer(30, check_drone_timeout, [drone_id]).start()
+    Timer(3 , check_drone_timeout, [drone_id]).start()
 
 def send_motor_test_command(drone_id, motor_instance, throttle):
     global_connection.mav.command_long_send(
@@ -192,7 +239,7 @@ def send_motor_test_command(drone_id, motor_instance, throttle):
 
 def check_drone_timeout(drone_id):
     current_time = time.time()
-    if drone_id in last_update_time and (current_time - last_update_time[drone_id]) > 30:
+    if drone_id in last_update_time and (current_time - last_update_time[drone_id]) > 3:
         drone_info = {
             "id": drone_id,
             "mode": "--",
@@ -246,8 +293,8 @@ def set_com_port():
 def set_rtk_port():
     data = request.json
     rtk_com_port = data.get('rtk_com_port')
-    baudrate = int(request.form['baudrate'])
-    
+    baudrate = int(data.get('baudrate'))
+    print("1")
     if rtk_com_port:
         setup_rtk_connection(rtk_com_port, baudrate)
         rtk_thread = Thread(target=read_and_send_rtk_data)
@@ -257,6 +304,10 @@ def set_rtk_port():
 
 @app.route('/motor_test', methods=['POST'])
 def motor_test():
+    # for d in get_drones():
+    #     set_message_interval(int(d))
+    # thread = Thread(target=esc_record)
+    # thread.start()
     motor_id = request.form['motor_id']
     drone_id = request.form.get('drone_id')
     throttle = float(request.form['throttle'])
@@ -343,6 +394,7 @@ def change_color():
 def get_battery_status():
     drone_ids = get_drones()
     battery_statuses = {drone_id: cache.get(f'drone_status_{drone_id}') for drone_id in drone_ids}
+    print(f"Battery statuses: {battery_statuses}")
     return jsonify(success=True, battery_statuses=battery_statuses)
 
 @app.route('/get_rtk_status', methods=['GET'])

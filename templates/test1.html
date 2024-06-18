@@ -790,6 +790,7 @@
             document.getElementById('selectAllButton').addEventListener('click', function() {
                 selectedDroneId = 'all';
                 console.log('Selected Drone ID:', selectedDroneId);
+                document.querySelectorAll('.drone-info').forEach(droneInfo => droneInfo.classList.remove('selected'));
             });
 
             document.addEventListener('click', function(event) {
@@ -913,36 +914,64 @@
             }
 
             function updateDroneInfo(drone) {
-                const droneInfo = document.querySelector(`.drone-info[data-drone-id='${drone.id}']`);
-                if (droneInfo) {
+                let droneInfo = document.querySelector(`.drone-info[data-drone-id='${drone.id}']`);
+                if (!droneInfo) {
+                    droneInfo = document.createElement('div');
+                    droneInfo.className = 'drone-info';
+                    droneInfo.dataset.droneId = drone.id;
+                    droneInfo.innerHTML = `
+                        <div class="status-circle"></div>
+                        <div>${drone.id}</div>
+                        <div>${drone.mode || '--'}</div>
+                        <div>${drone.voltage !== undefined ? drone.voltage + 'V' : '--'}</div>
+                        <div>${drone.current !== undefined ? drone.current + 'A' : '--'}</div>
+                        <div>${drone.gps_type || '--'}</div>
+                        <div>${drone.gps_coords[0] !== 0 && drone.gps_coords[1] !== 0 ? `${drone.gps_coords[0]}, ${drone.gps_coords[1]}` : '--, --'}</div>
+                    `;
+
+                    droneInfo.addEventListener('click', function() {
+                        const previouslySelected = document.querySelector('.drone-info.selected');
+                        if (previouslySelected && previouslySelected !== droneInfo) {
+                            previouslySelected.classList.remove('selected');
+                        }
+
+                        if (droneInfo.classList.contains('selected')) {
+                            droneInfo.classList.remove('selected');
+                            selectedDroneId = 'all';
+                        } else {
+                            droneInfo.classList.add('selected');
+                            selectedDroneId = drone.id;
+                        }
+
+                        console.log('Selected Drone ID:', selectedDroneId);
+                    });
+
+                    document.getElementById('droneInfoContainer').appendChild(droneInfo);
+                } else {
                     const [statusCircle, droneId, mode, voltage, current, rtkStatus, gps_coords] = droneInfo.children;
-                    statusCircle.style.backgroundColor = drone.voltage < 14 ? 'red' : 'green';
+                    statusCircle.style.backgroundColor = drone.voltage === '--' ? 'red' : (drone.voltage < 14 ? 'red' : 'green');
                     mode.textContent = drone.mode || '--';
-                    voltage.textContent = (drone.voltage !== undefined ? drone.voltage.toFixed(3) + 'V' : '--');
+                    voltage.textContent = (drone.voltage !== undefined ? drone.voltage + 'V' : '--');
                     current.textContent = (drone.current !== undefined ? drone.current + 'A' : '--');
                     rtkStatus.textContent = drone.gps_type || '--';
 
                     const lat = drone.gps_coords[0];
                     const lon = drone.gps_coords[1];
-                    gps_coords.textContent = (lat !== 0 && lon !== 0) ? `${lat.toFixed(7)}, ${lon.toFixed(7)}` : '--, --';
-                    if (drone.id === selectedDroneId) {
-                        droneInfo.classList.add('selected');
-                    }
-                } else {
-                    addDroneInfo(drone);
+                    gps_coords.textContent = (lat !== '--' && lon !== '--') ? `${lat}, ${lon}` : '--, --';
                 }
             }
 
             function updateTopbarInfo(drones) {
-                const activeDrones = drones.filter(drone => drone.voltage >= 14).length;
-                const inactiveDrones = drones.filter(drone => drone.voltage < 14).length;
+                const activeDrones = drones.filter(drone => drone.voltage !== '--' && drone.voltage >= 14).length;
+                const inactiveDrones = drones.filter(drone => drone.voltage === '--' || drone.voltage < 14).length;
 
                 let maxBattery = '--';
                 let minBattery = '--';
 
-                if (drones.length > 0) {
-                    maxBattery = Math.max(...drones.map(drone => drone.voltage));
-                    minBattery = Math.min(...drones.map(drone => drone.voltage));
+                const validDrones = drones.filter(drone => drone.voltage !== '--');
+                if (validDrones.length > 0) {
+                    maxBattery = Math.max(...validDrones.map(drone => drone.voltage));
+                    minBattery = Math.min(...validDrones.map(drone => drone.voltage));
                 }
 
                 document.getElementById('activeDrones').textContent = activeDrones;
@@ -957,9 +986,8 @@
                     .then(data => {
                         if (data.success) {
                             const batteryStatuses = Object.values(data.battery_statuses);
-                            const droneInfoContainer = document.getElementById('droneInfoContainer');
-                            droneInfoContainer.innerHTML = '';
 
+                            // Update drone info without clearing previous data
                             const previouslySelectedDroneId = selectedDroneId;
                             batteryStatuses.forEach(updateDroneInfo);
 
@@ -976,7 +1004,7 @@
             }
 
             fetchDroneData();
-            setInterval(fetchDroneData, 15000);
+            setInterval(fetchDroneData, 2000);
             const socket = io();
 
             socket.on('connect', () => {
