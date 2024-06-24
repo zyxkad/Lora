@@ -6,6 +6,7 @@ from flask_socketio import SocketIO, emit
 import subprocess
 import logging
 import os
+import sys
 import csv
 from datetime import datetime
 import serial
@@ -44,7 +45,7 @@ flight_modes = {
     27: "AUTO RTL"
 }
 
-#TODO: mavlink v2
+os.environ['MAVLINK20'] = '1'
 app.config['CACHE_TYPE'] = 'simple'
 cache = Cache(app)
 socketio = SocketIO(app)
@@ -66,12 +67,27 @@ log.addHandler(LogHandler())
 def setup_connection(com_port):
     global global_connection
     baud_rate = 115200
-    global_connection = mavutil.mavlink_connection(com_port, baud=baud_rate)
+    command = [
+        sys.executable,  # 使用当前的 Python 解释器
+        '-m', 'MAVProxy.mavproxy',  # 使用 -m 选项运行模块
+        '--master={}'.format(com_port),
+        '--baudrate={}'.format(baud_rate),
+        '--streamrate=-1',
+        '--out=udp:127.0.0.1:14550'  # 将输出转发到 UDP 端口
+    ]
+
+    # 启动 MAVProxy 并使用 --streamrate=-1 参数
+    subprocess.Popen(command)
+
+    # 等待 MAVProxy 启动
+    time.sleep(5)  # 根据需要调整等待时间
+
+    # 使用 UDP 连接到 MAVProxy 转发的端口
+    global_connection = mavutil.mavlink_connection('udp:127.0.0.1:14550')
 
 def setup_rtk_connection(com_port, baud_rate):
     global global_rtk_connection
     global_rtk_connection = serial.Serial(com_port, baudrate=baud_rate, timeout=1)
-    print("2")
 
 def listen_to_drones():
     while True:
@@ -82,39 +98,20 @@ def listen_to_drones():
                 update_drone_status(drone_id, msg)
         # time.sleep(0.1)
 
-def listen_to_rtk():
-    global rtk_status
-    while True:
-        if global_rtk_connection:
-            data = global_rtk_connection.read(1024)
-            if data:
-                print(f"Received {len(data)} bytes: {data}")
-                try:
-                    satellites_visible = data[0]
-                    survey_in_progress = data[1] == 1
-                    rtk_precision = struct.unpack('<f', data[2:6])[0]
-                    rtk_status = {
-                        "satellites_visible": satellites_visible,
-                        "survey_in_progress": survey_in_progress,
-                        "rtk_precision": rtk_precision
-                    }
-                except Exception as e:
-                    print(f"Error parsing RTK data: {e}")
-                send_rtk_data_to_drones(data)
-
 def set_message_interval(drone_id):
-    if global_connection:
-        global_connection.mav.command_long_send(
-            drone_id,
-            1,
-            mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
-            0,
-            291,
-            1000000,
-            0, 0, 0, 0,
-            0
-        )
-        print(f"Message interval set for drone {drone_id}")
+    # while True:
+        if global_connection:
+            global_connection.mav.command_long_send(
+                drone_id,
+                0,
+                511,
+                0,
+                147,
+                100000,
+                0, 0, 0, 0,
+                0
+            )
+        # print(f"asked for esc")
 
 def esc_record():
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -129,7 +126,6 @@ def esc_record():
                 msg = global_connection.recv_match(type=['ESC_STATUS'], blocking=False)
                 print(f"Received ESC_STATUS message: {msg}")
                 if msg:
-                    
                     timestamp = msg.time_usec
                     drone_id = msg.get_srcSystem()
                     index = msg.index
@@ -140,29 +136,10 @@ def esc_record():
                     writer.writerow([timestamp, drone_id, index] + rpm + voltage + current)
                     
                     file.flush()
-                
-def send_rtk_data_to_drones(data):
-    if global_connection:
-        max_packet_size = 180
-        sequence_id = 0
-        for i in range(0, len(data), max_packet_size):
-            chunk = data[i:i + max_packet_size]
-            flags = (sequence_id << 3)
-            sequence_id += 1
-            #TODO: keep sequence_id and send it twice
-            if len(chunk) < max_packet_size:
-                chunk += b'\x00' * (max_packet_size - len(chunk))
-
-            global_connection.mav.gps_rtcm_data_send(
-                flags,
-                len(chunk),
-                chunk
-            )
 
 def read_and_send_rtk_data():
     sequence_id = 0
     msglen = 100
-    #TODO: msglen = 100
     while True:
         data = global_rtk_connection.read(1024)
         for i in range(0, len(data), msglen):
@@ -199,7 +176,6 @@ def read_and_send_rtk_data():
 def update_drone_status(drone_id, msg):
     current_time = time.time()
     last_update_time[drone_id] = current_time
-    #TODO: actived drone number wrong
     drone_info = cache.get(f'drone_status_{drone_id}')
     if not drone_info:
         drone_info = {
@@ -249,7 +225,6 @@ def check_drone_timeout(drone_id):
             "gps_coords": ("--", "--")
         }
         cache.set(f'drone_status_{drone_id}', drone_info)
-        print(f"Drone {drone_id} status reset due to timeout: {drone_info}") 
 
 def send_led_control_message(drone_id, r, g, b, duration_msec, flashes):
     target_component = 1
@@ -294,7 +269,6 @@ def set_rtk_port():
     data = request.json
     rtk_com_port = data.get('rtk_com_port')
     baudrate = int(data.get('baudrate'))
-    print("1")
     if rtk_com_port:
         setup_rtk_connection(rtk_com_port, baudrate)
         rtk_thread = Thread(target=read_and_send_rtk_data)
@@ -304,14 +278,14 @@ def set_rtk_port():
 
 @app.route('/motor_test', methods=['POST'])
 def motor_test():
-    # for d in get_drones():
-    #     set_message_interval(int(d))
-    # thread = Thread(target=esc_record)
-    # thread.start()
     motor_id = request.form['motor_id']
     drone_id = request.form.get('drone_id')
     throttle = float(request.form['throttle'])
-    print(f"Motor test command received: DroneID: {drone_id}  MotorID: {motor_id}  Throttle: {throttle}")
+    # for d in get_drones():
+    #     thread = Thread(target=set_message_interval, args=(40,))
+    #     thread.start()
+    # thread = Thread(target=esc_record)
+    # thread.start()
     if global_connection:
         if drone_id == 'all':
             socketio.emit('log_message', {'data': f"send to all drones start"})
@@ -394,7 +368,6 @@ def change_color():
 def get_battery_status():
     drone_ids = get_drones()
     battery_statuses = {drone_id: cache.get(f'drone_status_{drone_id}') for drone_id in drone_ids}
-    print(f"Battery statuses: {battery_statuses}")
     return jsonify(success=True, battery_statuses=battery_statuses)
 
 @app.route('/get_rtk_status', methods=['GET'])
