@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session
 from pymavlink import mavutil
 from flask_caching import Cache
-from threading import Thread, Timer
+from threading import Thread, Timer, Event
 from flask_socketio import SocketIO, emit
 import subprocess
 import logging
@@ -45,12 +45,13 @@ flight_modes = {
     27: "AUTO RTL"
 }
 
-os.environ['MAVLINK20'] = '1'
 app.config['CACHE_TYPE'] = 'simple'
 cache = Cache(app)
 socketio = SocketIO(app)
 global_connection = None
 global_rtk_connection = None
+motor_test_duration = 30
+stop_battery_logging = Event()
 rtk_status = {"satellites_visible": 0, "survey_in_progress": True, "rtk_precision": None}
 last_update_time = {}
 log = logging.getLogger('werkzeug')
@@ -67,28 +68,12 @@ log.addHandler(LogHandler())
 def setup_connection(com_port):
     global global_connection
     baud_rate = 115200
-    command = [
-        sys.executable,  # 使用当前的 Python 解释器
-        '-m', 'MAVProxy.mavproxy',  # 使用 -m 选项运行模块
-        '--master={}'.format(com_port),
-        '--baudrate={}'.format(baud_rate),
-        '--streamrate=-1',
-        '--out=udp:127.0.0.1:14550'  # 将输出转发到 UDP 端口
-    ]
-
-    # 启动 MAVProxy 并使用 --streamrate=-1 参数
-    subprocess.Popen(command)
-
-    # 等待 MAVProxy 启动
-    time.sleep(5)  # 根据需要调整等待时间
-
-    # 使用 UDP 连接到 MAVProxy 转发的端口
-    global_connection = mavutil.mavlink_connection('udp:127.0.0.1:14550')
+    global_connection = mavutil.mavlink_connection(com_port, baud=baud_rate)
 
 def setup_rtk_connection(com_port, baud_rate):
     global global_rtk_connection
     global_rtk_connection = serial.Serial(com_port, baudrate=baud_rate, timeout=1)
-
+    
 def listen_to_drones():
     while True:
         if global_connection:
@@ -96,46 +81,6 @@ def listen_to_drones():
             if msg:
                 drone_id = msg.get_srcSystem()
                 update_drone_status(drone_id, msg)
-        # time.sleep(0.1)
-
-def set_message_interval(drone_id):
-    # while True:
-        if global_connection:
-            global_connection.mav.command_long_send(
-                drone_id,
-                0,
-                511,
-                0,
-                147,
-                100000,
-                0, 0, 0, 0,
-                0
-            )
-        # print(f"asked for esc")
-
-def esc_record():
-    current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f'esc_status_{current_time}.csv'
-    with open(filename, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        
-        writer.writerow(['timestamp', 'drone_id', 'index', 'rpm1', 'rpm2', 'rpm3', 'rpm4', 'voltage1', 'voltage2', 'voltage3', 'voltage4', 'current1', 'current2', 'current3', 'current4'])
-        
-        while True:
-            if global_connection:
-                msg = global_connection.recv_match(type=['ESC_STATUS'], blocking=False)
-                print(f"Received ESC_STATUS message: {msg}")
-                if msg:
-                    timestamp = msg.time_usec
-                    drone_id = msg.get_srcSystem()
-                    index = msg.index
-                    rpm = msg.rpm
-                    voltage = msg.voltage
-                    current = msg.current
-
-                    writer.writerow([timestamp, drone_id, index] + rpm + voltage + current)
-                    
-                    file.flush()
 
 def read_and_send_rtk_data():
     sequence_id = 0
@@ -199,6 +144,7 @@ def update_drone_status(drone_id, msg):
     Timer(3 , check_drone_timeout, [drone_id]).start()
 
 def send_motor_test_command(drone_id, motor_instance, throttle):
+    global motor_test_duration
     global_connection.mav.command_long_send(
         drone_id,
         1,
@@ -207,7 +153,7 @@ def send_motor_test_command(drone_id, motor_instance, throttle):
         motor_instance,
         mavutil.mavlink.MOTOR_TEST_THROTTLE_PERCENT,
         throttle,
-        10,
+        motor_test_duration,
         0,
         0,
         0
@@ -281,11 +227,7 @@ def motor_test():
     motor_id = request.form['motor_id']
     drone_id = request.form.get('drone_id')
     throttle = float(request.form['throttle'])
-    # for d in get_drones():
-    #     thread = Thread(target=set_message_interval, args=(40,))
-    #     thread.start()
-    # thread = Thread(target=esc_record)
-    # thread.start()
+
     if global_connection:
         if drone_id == 'all':
             socketio.emit('log_message', {'data': f"send to all drones start"})
@@ -295,17 +237,18 @@ def motor_test():
                 if motor_id == 'all':
                     for motor_instance in range(1, 5):
                         send_motor_test_command(d, motor_instance, throttle)
-                        # time.sleep(0.2)
                 else:
                     send_motor_test_command(d, int(motor_id), throttle)
         else:
+            drone_id = int(drone_id)
             if motor_id == 'all':
                 for motor_instance in range(1, 5):
-                    send_motor_test_command(int(drone_id), motor_instance, throttle)
-                    # time.sleep(0.1)
+                    send_motor_test_command(drone_id, motor_instance, throttle)
             else:
-                send_motor_test_command(int(drone_id), int(motor_id), throttle)
-        return jsonify(success=True, message="Motor test command sent.")
+                send_motor_test_command(drone_id, int(motor_id), throttle)
+
+    return jsonify(success=True, message="Motor test command sent.")
+
 
 @app.route('/change_mode', methods=['POST'])
 def change_mode():
