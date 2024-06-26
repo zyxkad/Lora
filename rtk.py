@@ -53,6 +53,7 @@ app.config['CACHE_TYPE'] = 'simple'
 baud_rate = 115200
 drone_infos = {}
 drone_timeout_timers = {}
+testing_motors = {}
 socketio = SocketIO(app)
 global_connection = None
 global_rtk_connection = None
@@ -69,6 +70,11 @@ class LogHandler(logging.Handler):
         print(log_entry)
 
 log.addHandler(LogHandler())
+
+def startTimer(interval, function, *args, **kwargs):
+    timer = Timer(interval, function, args, kwargs)
+    timer.start()
+    return timer
 
 def setup_connection(com_port):
     return mavutil.mavlink_connection(com_port, baud=baud_rate)
@@ -157,12 +163,9 @@ def update_drone_status(drone_id, msg):
 
     if changed:
         socketio.emit('drone_info', drone_info)
-    drone_timeout_timer = Timer(3, lambda: mark_drone_disconnected(drone_id, drone_info, 'timeout'))
-    drone_timeout_timer.start()
-    drone_timeout_timers[drone_id] = drone_timeout_timer
+    drone_timeout_timers[drone_id] = startTimer(3, mark_drone_disconnected, drone_id, drone_info, 'timeout')
 
-def send_motor_test_command(connection, drone_id, motor_instance, throttle):
-    global motor_test_duration
+def send_motor_test_command(connection, drone_id, motor_instance, throttle, duration):
     connection.mav.command_long_send(
         drone_id,
         1,
@@ -171,7 +174,7 @@ def send_motor_test_command(connection, drone_id, motor_instance, throttle):
         motor_instance,
         mavutil.mavlink.MOTOR_TEST_THROTTLE_PERCENT,
         throttle,
-        motor_test_duration,
+        duration,
         0,
         0,
         0
@@ -197,7 +200,21 @@ def send_led_control_message(drone_id, r, g, b, duration_msec, flashes):
         time.sleep(duration_msec / 1000 + 0.5)
 
 def get_active_drones():
-    return [drone_id for drone_id, drone_info in drone_infos.values() if drone_info['status'] == 'ok']
+    return [drone_id for drone_id, drone_info in drone_infos.items() if drone_info['status'] == 'ok']
+
+def clean_testing_motors():
+    now = time.time()
+    for d, motors in testing_motors.items():
+        for m, deadline in motors.items():
+            if deadline < now:
+                del motors[m]
+
+def stop_all_testing_motors():
+    if not global_connection:
+        return
+    for d, motors in testing_motors.items():
+        for m, deadline in motors.items():
+            send_motor_test_command(global_connection, d, m, 0, 0)
 
 @app.route('/list_ports', methods=['GET'])
 def list_ports():
@@ -252,9 +269,19 @@ def motor_test():
         motors = range(1, 5)
     else:
         motors = [int(motor_id)]
+    global motor_test_duration
+    duration = motor_test_duration
+    deadline = time.time() + duration
     for d in drones:
         for m in motors:
-            send_motor_test_command(global_connection, d, m, throttle)
+            if d in testing_motors:
+                tsting_motors = testing_motors[d]
+            else:
+                tsting_motors = {}
+                testing_motors[d] = tsting_motors
+            tsting_motors[m] = deadline
+            send_motor_test_command(global_connection, d, m, throttle, duration)
+    startTimer(duration, clean_testing_motors)
     return jsonify(success=True, message='Motor test command sent.')
 
 
@@ -320,4 +347,7 @@ def handle_selected_block():
     return jsonify(message=f'Received and saved drone ID: {drone_id}')
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    try:
+        socketio.run(app, debug=True)
+    finally:
+        stop_all_testing_motors()
