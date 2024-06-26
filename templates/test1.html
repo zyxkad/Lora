@@ -1241,7 +1241,10 @@
                         }
                         const duration = data.duration * 1000
                         for (const elem of testMotorSelectors) {
-                            elem.removeAttribute('data-activited')
+                            // TODO: for somereason when we test another motor, the current testing motor's duration will be expand as well
+                            if (elem.getAttribute('data-activited')) {
+                                testingMotorElems.push(elem);
+                            }
                         }
                         for (const elem of testingMotorElems) {
                             elem.setAttribute('data-activited', 'true')

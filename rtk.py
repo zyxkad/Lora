@@ -280,11 +280,6 @@ def motor_test():
             if not tsting_motors:
                 tsting_motors = {}
                 testing_motors[d] = tsting_motors
-            for m in range(1, 5):
-                if m in tsting_motors:
-                    # stop testing motors first
-                    send_motor_test_command(global_connection, d, m, 0, 0)
-                    time.sleep(0.01)
             for m in motors:
                 tsting_motors[m] = deadline
                 send_motor_test_command(global_connection, d, m, throttle, duration)
