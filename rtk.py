@@ -76,6 +76,11 @@ def startTimer(interval, function, /, *args, **kwargs):
     timer.start()
     return timer
 
+def startThread(function, /, *args, **kwargs):
+    thread = Thread(target=function, name=getattr(function, '__name__', None), args=args, kwargs=kwargs)
+    thread.start()
+    return thread
+
 def setup_connection(com_port):
     return mavutil.mavlink_connection(com_port, baud=baud_rate)
 
@@ -235,8 +240,7 @@ def set_com_port():
     data = request.json
     com_port = data.get('com_port')
     global_connection = setup_connection(com_port)
-    thread = Thread(target=listen_to_drones, name='listen_to_drones', args=(global_connection,))
-    thread.start()
+    startThread(listen_to_drones, global_connection)
     socketio.emit('log_message', {'data': f'COM port {com_port} set'})
     return jsonify(success=True, message='COM port set and listening started.')
 
@@ -248,8 +252,7 @@ def set_rtk_port():
     baudrate = int(data.get('baudrate'))
     if rtk_com_port:
         global_rtk_connection = setup_rtk_connection(rtk_com_port, baudrate)
-        rtk_thread = Thread(target=read_and_send_rtk_data, name='read_and_send_rtk_data', args=(global_connection, global_rtk_connection,))
-        rtk_thread.start()
+        startThread(read_and_send_rtk_data, global_connection, global_rtk_connection)
     socketio.emit('log_message', {'data': f'RTK port {rtk_com_port} set with baudrate {baudrate} and listening started.'})
     return jsonify(success=True, message='RTK port set and listening started.')
 
