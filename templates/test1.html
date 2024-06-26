@@ -1117,27 +1117,29 @@
 
             document.getElementById('confirmButton').addEventListener('click', function() {
                 const confirmCheckbox = document.getElementById('confirmCheckbox');
-                if (confirmCheckbox.checked) {
-                    const motorId = document.getElementById('motorIdSelect').value;
-                    const throttle = document.getElementById('throttleSelect').value;
-
-                    fetch('/motor_test', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        },
-                        body: new URLSearchParams({ motor_id: motorId, throttle: throttle, drone_id: selectedDroneId })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            console.log('Motor test command sent:', { motorId, throttle });
-                        } else {
-                            console.error('Error sending motor test command:', data.message);
-                        }
-                    });
-                    confirmationModal.classList.add('hidden');
+                if (!confirmCheckbox.checked) {
+                    return;
                 }
+                confirmCheckbox.checked = false;
+                const motorId = document.getElementById('motorIdSelect').value;
+                const throttle = document.getElementById('throttleSelect').value;
+
+                fetch('/motor_test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({ motor_id: motorId, throttle: throttle, drone_id: selectedDroneId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Motor test command sent:', { motorId, throttle });
+                    } else {
+                        console.error('Error sending motor test command:', data.message);
+                    }
+                });
+                confirmationModal.classList.add('hidden');
             });
 
             document.getElementById('cancelButton').addEventListener('click', function() {
