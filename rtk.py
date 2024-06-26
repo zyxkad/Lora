@@ -120,7 +120,7 @@ def read_and_send_rtk_data(connection, rtk_connection):
 def update_drone_status(drone_id, msg):
     drone_timeout_timer = drone_timeout_timers.pop(drone_id, None)
     if drone_timeout_timer:
-        drone_timeout_timer.stop()
+        drone_timeout_timer.cancel()
     drone_info = drone_infos.get(drone_id, None)
     if not drone_info:
         drone_info = {
