@@ -573,9 +573,15 @@
             height: 3rem;
             border-radius: 50%;
             border: 2px solid #888;
-            text-align: center;
             user-select: none;
             cursor: pointer;
+        }
+
+        .motor-test-motor::before {
+            content: attr(data-motor-id);
+            display: inline-block;
+            width: 100%;
+            text-align: center;
         }
 
         .motor-test-motor[data-selected=true] {
@@ -595,6 +601,14 @@
         .motor-test-motor[data-activited=true] {
             --flash-bg: #990;
             animation: flash-bg 1s infinite;
+        }
+
+        .motor-test-motor[data-activited=true] > .timer::before {
+            content: var(--time-left);
+            display: inline-block;
+            width: 100%;
+            text-align: center;
+            font-size: 0.7rem;
         }
 
         .motor-test-motor:nth-child(1) {
@@ -728,10 +742,10 @@
                         <div class="motor-test-controls">
                             <div class="control-group">
                                 <div id="motor-test-drone">
-                                    <div class="motor-test-motor" data-motor-id="1">1</div>
-                                    <div class="motor-test-motor" data-motor-id="2">2</div>
-                                    <div class="motor-test-motor" data-motor-id="3">3</div>
-                                    <div class="motor-test-motor" data-motor-id="4">4</div>
+                                    <div class="motor-test-motor" data-motor-id="1"><div class="timer"></div></div>
+                                    <div class="motor-test-motor" data-motor-id="2"><div class="timer"></div></div>
+                                    <div class="motor-test-motor" data-motor-id="3"><div class="timer"></div></div>
+                                    <div class="motor-test-motor" data-motor-id="4"><div class="timer"></div></div>
                                 </div>
                             </div>
                             <div class="control-group">
@@ -1190,6 +1204,7 @@
                 confirmationModal.classList.remove('hidden');
             });
 
+            let activateTimer, activateCounter
             document.getElementById('confirmButton').addEventListener('click', function() {
                 const confirmCheckbox = document.getElementById('confirmCheckbox');
                 if (!confirmCheckbox.checked) {
@@ -1216,20 +1231,36 @@
                 .then(data => {
                     if (data.success) {
                         console.log('Motor test command sent:', { motorIds, throttle });
+                        if (activateCounter) {
+                            clearInterval(activateCounter)
+                        }
+                        if (activateTimer) {
+                            clearTimeout(activateTimer)
+                        }
                         const duration = data.duration * 1000
+                        for (const elem of testMotorSelectors) {
+                            elem.removeAttribute('data-activited')
+                        }
                         for (const elem of testingMotorElems) {
                             elem.setAttribute('data-activited', 'true')
-                            elem.setAttribute('data-activite-deadline', Date.now() + duration - 100)
                         }
-                        setTimeout(() => {
+                        let timeStart = Date.now()
+                        activateCounter = setInterval(() => {
+                            const timeLeft = duration + timeStart - Date.now()
+                            const timeLeftStr = (timeLeft / 1000).toFixed(2) + 's'
+                            for (const elem of testingMotorElems) {
+                                elem.style.setProperty('--time-left', `"${timeLeftStr}"`);
+                            }
+                        }, 50)
+                        activateTimer = setTimeout(() => {
+                            if (activateCounter) {
+                                clearInterval(activateCounter)
+                            }
                             const now = Date.now()
                             for (const elem of testingMotorElems) {
-                                if (parseInt(elem.getAttribute('data-activite-deadline')) < now) {
-                                    elem.removeAttribute('data-activited')
-                                    elem.removeAttribute('data-activite-deadline')
-                                }
+                                elem.removeAttribute('data-activited')
                             }
-                        }, data.duration * 1000)
+                        }, duration)
                     } else {
                         console.error('Error sending motor test command:', data.message);
                     }
