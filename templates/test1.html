@@ -1115,14 +1115,16 @@
                     }
                 }
             });
-            socket.on('drone_disconnected', (drone_id, reason) => {
-                const drone_info = drones[drone_id];
-                if (!drone_info) {
+            socket.on('drone_disconnected', ([drone_id, reason]) => {
+                const droneInfo = drones[drone_id];
+                if (!droneInfo) {
                     return;
                 }
+                droneInfo['mode'] = 'DISCONNECTED';
+                updateDroneInfo(droneInfo);
                 // TODO: maybe display the disconnected reason
-                // drone_info['status'] = 'disconnected';
-                // drone_info['error'] = reason;
+                // droneInfo['status'] = 'disconnected';
+                // droneInfo['error'] = reason;
                 delete drones[drone_id];
                 dronesChanged = true;
             });

@@ -89,7 +89,11 @@ def setup_rtk_connection(com_port, baud_rate):
     
 def listen_to_drones(connection):
     while True:
-        msg = connection.recv_match(type=['SYS_STATUS', 'GPS_RAW_INT', 'HEARTBEAT'], blocking=True)
+        try:
+            msg = connection.recv_match(type=['SYS_STATUS', 'GPS_RAW_INT', 'HEARTBEAT'], blocking=True)
+        except serial.serialutil.SerialException as e:
+            print('Error when listening drones:', e)
+            break
         if not msg:
             continue
         drone_id = msg.get_srcSystem()
@@ -188,7 +192,7 @@ def send_motor_test_command(connection, drone_id, motor_instance, throttle, dura
 def mark_drone_disconnected(drone_id, drone_info, reason):
     drone_info['status'] = 'disconnected'
     drone_info['error'] = reason
-    socketio.emit('drone_disconnected', drone_id, reason)
+    socketio.emit('drone_disconnected', [drone_id, reason])
 
 def send_led_control_message(drone_id, r, g, b, duration_msec, flashes):
     target_component = 1
