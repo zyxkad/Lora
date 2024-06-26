@@ -557,7 +557,56 @@
             background-color: #555;
         }
 
+        #motor-test-drone {
+            width: 7rem;
+            height: 7rem;
+            display: grid;
+            grid-template: 
+                "d a" 3rem
+                "b c" 3rem
+                / 3rem 3rem;
+            gap: 1rem 1rem;
+        }
 
+        .motor-test-motor {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            border: 2px solid #888;
+            text-align: center;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .motor-test-motor[data-selected=true] {
+            background-color: #070;
+        }
+
+        .motor-test-motor:nth-child(1) {
+            grid-area: a;
+        }
+
+        .motor-test-motor:nth-child(2) {
+            grid-area: b;
+        }
+
+        .motor-test-motor:nth-child(3) {
+            grid-area: c;
+        }
+
+        .motor-test-motor:nth-child(4) {
+            grid-area: d;
+        }
+
+        .motor-test-motor:nth-child(1),
+        .motor-test-motor:nth-child(4) {
+            border-color: #f00;
+        }
+
+        .motor-test-motor:nth-child(2),
+        .motor-test-motor:nth-child(3) {
+            border-color: #eee;
+        }
     </style>
 </head>
 <body>
@@ -624,11 +673,11 @@
                 <div class="bottom-left fixed">
                     <div id="lightControlContent" class="bottom-left-content hidden">
                         <div class="color-picker">
-                            <div class="color-button" style="background-color: red;" data-r="255" data-g="0" data-b="0"></div>
-                            <div class="color-button" style="background-color: blue;" data-r="0" data-g="0" data-b="255"></div>
-                            <div class="color-button" style="background-color: green;" data-r="0" data-g="255" data-b="0"></div>
-                            <div class="color-button" style="background-color: yellow;" data-r="255" data-g="255" data-b="0"></div>
-                            <div class="color-button" style="background-color: white;" data-r="255" data-g="255" data-b="255"></div>
+                            <div class="color-button" style="background-color: rgb(255, 0, 0);" data-r="255" data-g="0" data-b="0"></div>
+                            <div class="color-button" style="background-color: rgb(0, 0, 255);" data-r="0" data-g="0" data-b="255"></div>
+                            <div class="color-button" style="background-color: rgb(0, 255, 0);" data-r="0" data-g="255" data-b="0"></div>
+                            <div class="color-button" style="background-color: rgb(255, 255, 0);" data-r="255" data-g="255" data-b="0"></div>
+                            <div class="color-button" style="background-color: rgb(255, 255, 255);" data-r="255" data-g="255" data-b="255"></div>
                         </div>
                         <div class="actions">
                             <div class="action-button" id="flashButton">Flash</div>
@@ -663,14 +712,12 @@
                         </div>
                         <div class="motor-test-controls">
                             <div class="control-group">
-                                <label for="motorIdSelect">Motor ID</label>
-                                <select id="motorIdSelect">
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                    <option value="4">4</option>
-                                    <option value="all">All</option>
-                                </select>
+                                <div id="motor-test-drone">
+                                    <div class="motor-test-motor" data-motor-id="1">1</div>
+                                    <div class="motor-test-motor" data-motor-id="2">2</div>
+                                    <div class="motor-test-motor" data-motor-id="3">3</div>
+                                    <div class="motor-test-motor" data-motor-id="4">4</div>
+                                </div>
                             </div>
                             <div class="control-group">
                                 <label for="throttleSelect">Throttle %</label>
@@ -853,6 +900,18 @@
                     }
                 });
             });
+
+            const testMotorSelectors = document.getElementsByClassName('motor-test-motor');
+            for (const elem of testMotorSelectors) {
+                elem.addEventListener('click', () => {
+                    const wasSelected = elem.getAttribute('data-selected');
+                    if (wasSelected) {
+                        elem.removeAttribute('data-selected')
+                    } else {
+                        elem.setAttribute('data-selected', 'true')
+                    }
+                })
+            }
 
             function addDroneInfo(drone) {
                 const droneInfoContainer = document.getElementById('droneInfoContainer');
@@ -1121,20 +1180,25 @@
                     return;
                 }
                 confirmCheckbox.checked = false;
-                const motorId = document.getElementById('motorIdSelect').value;
-                const throttle = document.getElementById('throttleSelect').value;
+                const motorIds = [];
+                for (const elem of testMotorSelectors) {
+                    if (elem.getAttribute('data-selected')) {
+                        motorIds.push(parseInt(elem.getAttribute('data-motor-id')))
+                    }
+                }
+                const throttle = parseFloat(document.getElementById('throttleSelect').value);
 
                 fetch('/motor_test', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
+                        'Content-Type': 'application/json'
                     },
-                    body: new URLSearchParams({ motor_id: motorId, throttle: throttle, drone_id: selectedDroneId })
+                    body: JSON.stringify({ motors: motorIds, throttle: throttle, drone_id: selectedDroneId })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        console.log('Motor test command sent:', { motorId, throttle });
+                        console.log('Motor test command sent:', { motorIds, throttle });
                     } else {
                         console.error('Error sending motor test command:', data.message);
                     }

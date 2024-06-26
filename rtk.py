@@ -1,7 +1,7 @@
 from datetime import datetime
 from threading import Lock, Thread, Timer, Event
 
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify
 from flask_caching import Cache
 from flask_socketio import SocketIO, emit
 from pymavlink import mavutil
@@ -124,7 +124,7 @@ def read_and_send_rtk_data(connection, rtk_connection):
                 connection.mav.gps_rtcm_data_send(
                     flags,
                     0,
-                    bytearray(''.ljust(180, b'\0'))
+                    bytearray(b'\0' * 180)
                 )
             sequence_id = (sequence_id + 1) & 0x1f
 
@@ -211,7 +211,7 @@ def clean_testing_motors():
     with testing_motors_lock:
         now = time.time()
         for d, motors in testing_motors.items():
-            for m in motors.keys():
+            for m in list(motors.keys()):
                 deadline = motors[m]
                 if deadline < now:
                     del motors[m]
@@ -258,23 +258,19 @@ def set_rtk_port():
 
 @app.route('/motor_test', methods=['POST'])
 def motor_test():
-    motor_id = request.form['motor_id']
-    drone_id = request.form.get('drone_id')
-    throttle = float(request.form['throttle'])
+    payload = request.get_json()
+    motors = payload['motors']
+    drone_id = payload['drone_id']
+    throttle = float(payload['throttle'])
 
     if not global_connection:
         return jsonify(success=False, message='Not connected')
     drones = []
-    motors = []
     if drone_id == 'all':
-        socketio.emit('log_message', {'data': f'send to all drones start'})
+        socketio.emit('log_message', {'data': 'send to all drones start'})
         drones = get_active_drones()
     else:
         drones = [int(drone_id)]
-    if motor_id == 'all':
-        motors = range(1, 5)
-    else:
-        motors = [int(motor_id)]
     global motor_test_duration
     duration = motor_test_duration
     deadline = time.time() + duration
@@ -300,7 +296,7 @@ def change_mode():
         return jsonify(success=False, message='Connection not established.')
     drones = []
     if drone_id == 'all':
-        socketio.emit('log_message', {'data': f'send to all start'})
+        socketio.emit('log_message', {'data': 'send to all start'})
         drones = get_active_drones()
     else:
         drones = [int(drone_id)]
@@ -331,10 +327,10 @@ def change_color():
     flashes = int(flashes)
     drones = []
     if drone_id == 'all':
-        socketio.emit('log_message', {'data': f'send to all start'})
+        socketio.emit('log_message', {'data': 'send to all start'})
         drones = get_active_drones()
     else:
-        socketio.emit('log_message', {'data': f'send to one start'})
+        socketio.emit('log_message', {'data': 'send to one start'})
         drones = [int(drone_id)]
     for d in drones:
         send_led_control_message(d, r, g, b, duration, flashes)
@@ -346,15 +342,14 @@ def change_color():
 def get_rtk_status():
     return jsonify(success=True, rtk_status=rtk_status)
 
-@app.route('/selected_block', methods=['POST'])
-def handle_selected_block():
-    data = request.get_json()
-    drone_id = data['droneId']
-    session['drone_id'] = drone_id
-    return jsonify(message=f'Received and saved drone ID: {drone_id}')
+def main():
+    socketio.run(app, debug=True)
+
+def cleanup():
+    stop_all_testing_motors()
 
 if __name__ == '__main__':
     try:
-        socketio.run(app, debug=True)
+        main()
     finally:
-        stop_all_testing_motors()
+        cleanup()
