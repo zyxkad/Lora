@@ -283,7 +283,6 @@ def motor_test():
             for m in range(1, 5):
                 if m in tsting_motors:
                     # stop testing motors first
-                    print('stopping', d, m)
                     send_motor_test_command(global_connection, d, m, 0, 0)
                     time.sleep(0.01)
             for m in motors:
@@ -292,6 +291,22 @@ def motor_test():
     startTimer(duration, clean_testing_motors)
     return jsonify(success=True, message='Motor test command sent.', duration=duration)
 
+@app.route('/stop_motor_test', methods=['POST'])
+def stop_motor_test():
+    payload = request.get_json()
+    drone_id = payload['drone_id']
+    drones = []
+    if drone_id == 'all':
+        socketio.emit('log_message', {'data': 'send to all start'})
+        drones = get_active_drones()
+    else:
+        drones = [int(drone_id)]
+    if not global_connection:
+        return jsonify(success=False, message='Not connected')
+    for d in drones:
+        for m in range(1, 5):
+            send_motor_test_command(global_connection, d, m, 0, 0)
+    return jsonify(success=True, message='Motor test command sent.')
 
 @app.route('/change_mode', methods=['POST'])
 def change_mode():

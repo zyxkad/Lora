@@ -498,6 +498,7 @@
         .motor-test-actions {
             display: flex;
             justify-content: center;
+            justify-content: space-evenly;
         }
 
         .motor-test-actions button {
@@ -764,6 +765,7 @@
                         </div>
                         <div class="motor-test-actions">
                             <button id="startMotorTestButton">Start Test</button>
+                            <button id="stopMotorTestButton">Stop Test</button>
                         </div>
                     </div>
                     <div id="confirmationModal" class="modal hidden">
@@ -1271,6 +1273,20 @@
             document.getElementById('cancelButton').addEventListener('click', function() {
                 const confirmationModal = document.getElementById('confirmationModal');
                 confirmationModal.classList.add('hidden');
+            });
+
+            document.getElementById('stopMotorTestButton').addEventListener('click', function() {
+                fetch('/stop_motor_test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ drone_id: selectedDroneId })
+                })
+                const now = Date.now()
+                for (const elem of testMotorSelectors) {
+                    elem.removeAttribute('data-activited')
+                }
             });
         });
     </script>
