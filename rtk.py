@@ -1,5 +1,5 @@
 from datetime import datetime
-from threading import Thread, Timer, Event
+from threading import Lock, Thread, Timer, Event
 
 from flask import Flask, render_template, request, jsonify, session
 from flask_caching import Cache
@@ -54,11 +54,11 @@ baud_rate = 115200
 drone_infos = {}
 drone_timeout_timers = {}
 testing_motors = {}
+testing_motors_lock = Lock()
 socketio = SocketIO(app)
 global_connection = None
 global_rtk_connection = None
-motor_test_duration = 30
-stop_battery_logging = Event()
+motor_test_duration = 10
 rtk_status = {'satellites_visible': 0, 'survey_in_progress': True, 'rtk_precision': None}
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.INFO)
@@ -71,7 +71,7 @@ class LogHandler(logging.Handler):
 
 log.addHandler(LogHandler())
 
-def startTimer(interval, function, *args, **kwargs):
+def startTimer(interval, function, /, *args, **kwargs):
     timer = Timer(interval, function, args, kwargs)
     timer.start()
     return timer
@@ -203,18 +203,21 @@ def get_active_drones():
     return [drone_id for drone_id, drone_info in drone_infos.items() if drone_info['status'] == 'ok']
 
 def clean_testing_motors():
-    now = time.time()
-    for d, motors in testing_motors.items():
-        for m, deadline in motors.items():
-            if deadline < now:
-                del motors[m]
+    with testing_motors_lock:
+        now = time.time()
+        for d, motors in testing_motors.items():
+            for m in motors.keys():
+                deadline = motors[m]
+                if deadline < now:
+                    del motors[m]
 
 def stop_all_testing_motors():
     if not global_connection:
         return
-    for d, motors in testing_motors.items():
-        for m, deadline in motors.items():
-            send_motor_test_command(global_connection, d, m, 0, 0)
+    with testing_motors_lock:
+        for d, motors in testing_motors.items():
+            for m, deadline in motors.items():
+                send_motor_test_command(global_connection, d, m, 0, 0)
 
 @app.route('/list_ports', methods=['GET'])
 def list_ports():
@@ -272,15 +275,16 @@ def motor_test():
     global motor_test_duration
     duration = motor_test_duration
     deadline = time.time() + duration
-    for d in drones:
-        for m in motors:
-            if d in testing_motors:
-                tsting_motors = testing_motors[d]
-            else:
-                tsting_motors = {}
-                testing_motors[d] = tsting_motors
-            tsting_motors[m] = deadline
-            send_motor_test_command(global_connection, d, m, throttle, duration)
+    with testing_motors_lock:
+        for d in drones:
+            for m in motors:
+                if d in testing_motors:
+                    tsting_motors = testing_motors[d]
+                else:
+                    tsting_motors = {}
+                    testing_motors[d] = tsting_motors
+                tsting_motors[m] = deadline
+                send_motor_test_command(global_connection, d, m, throttle, duration)
     startTimer(duration, clean_testing_motors)
     return jsonify(success=True, message='Motor test command sent.')
 
