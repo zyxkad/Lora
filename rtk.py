@@ -122,7 +122,9 @@ def update_drone_status(drone_id, msg):
     if drone_timeout_timer:
         drone_timeout_timer.cancel()
     drone_info = drone_infos.get(drone_id, None)
+    changed = False
     if not drone_info:
+        changed = True
         drone_info = {
             'id': drone_id,
             'status': 'ok',
@@ -132,17 +134,29 @@ def update_drone_status(drone_id, msg):
             'gps_type': '--',
             'gps_coords': ('--', '--')
         }
+        drone_infos[drone_id] = drone_info
     if msg.get_type() == 'HEARTBEAT':
-        drone_info['mode'] = flight_modes.get(msg.custom_mode, 'Unknown')
+        mode = flight_modes.get(msg.custom_mode, 'Unknown')
+        if drone_info['mode'] != mode:
+            changed = True
+            drone_info['mode'] = mode
     elif msg.get_type() == 'SYS_STATUS':
-        drone_info['voltage'] = msg.voltage_battery / 1000.0
-        drone_info['current'] = msg.current_battery / 100.0
+        voltage = msg.voltage_battery / 1000.0
+        current = msg.current_battery / 100.0
+        if drone_info['voltage'] != voltage or drone_info['current'] != current:
+            changed = True
+            drone_info['voltage'] = voltage
+            drone_info['current'] = current
     elif msg.get_type() == 'GPS_RAW_INT':
-        drone_info['gps_type'] = msg.fix_type
-        drone_info['gps_coords'] = (msg.lat / 1e7, msg.lon / 1e7)
+        gps_type = msg.fix_type
+        gps_coords = (msg.lat / 1e7, msg.lon / 1e7)
+        if drone_info['gps_type'] != gps_type or drone_info['gps_coords'] != gps_coords:
+            changed = True
+            drone_info['gps_type'] = gps_type
+            drone_info['gps_coords'] = gps_coords
 
-    socketio.emit('drone_info', drone_info)
-    drone_infos[drone_id] = drone_info
+    if changed:
+        socketio.emit('drone_info', drone_info)
     drone_timeout_timer = Timer(3, lambda: mark_drone_disconnected(drone_id, drone_info, 'timeout'))
     drone_timeout_timer.start()
     drone_timeout_timers[drone_id] = drone_timeout_timer
