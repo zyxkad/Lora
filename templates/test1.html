@@ -926,7 +926,9 @@
                         <div>${drone.voltage !== undefined ? drone.voltage + 'V' : '--'}</div>
                         <div>${drone.current !== undefined ? drone.current + 'A' : '--'}</div>
                         <div>${drone.gps_type || '--'}</div>
-                        <div>${drone.gps_coords[0] !== 0 && drone.gps_coords[1] !== 0 ? `${drone.gps_coords[0]}, ${drone.gps_coords[1]}` : '--, --'}</div>
+                        <div>
+                            ${drone.gps_coords[0] !== 0 && drone.gps_coords[1] !== 0 ? `${drone.gps_coords[0]}, ${drone.gps_coords[1]}` : '--, --'}
+                        </div>
                     `;
 
                     droneInfo.addEventListener('click', function() {
@@ -980,31 +982,6 @@
                 document.getElementById('minBattery').textContent = (minBattery !== '--') ? minBattery + 'V' : '--';
             }
 
-            function fetchDroneData() {
-                fetch('/get_battery_status')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            const batteryStatuses = Object.values(data.battery_statuses);
-
-                            // Update drone info without clearing previous data
-                            const previouslySelectedDroneId = selectedDroneId;
-                            batteryStatuses.forEach(updateDroneInfo);
-
-                            if (previouslySelectedDroneId) {
-                                const selectedDroneElement = document.querySelector(`.drone-info[data-drone-id='${previouslySelectedDroneId}']`);
-                                if (selectedDroneElement) {
-                                    selectedDroneElement.classList.add('selected');
-                                }
-                            }
-
-                            updateTopbarInfo(batteryStatuses);
-                        }
-                    });
-            }
-
-            fetchDroneData();
-            setInterval(fetchDroneData, 2000);
             const socket = io();
 
             socket.on('connect', () => {
@@ -1023,6 +1000,40 @@
                 newLog.textContent = data.data;
                 terminalOutput.appendChild(newLog);
                 terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            });
+
+            const drones = {};
+            let dronesChanged = false;
+            setInterval(() => {
+                if (dronesChanged) {
+                    updateTopbarInfo(drones);
+                    dronesChanged = false;
+                }
+            }, 500);
+            socket.on('drone_info', (data) => {
+                // Update drone info without clearing previous data
+                const previouslySelectedDroneId = selectedDroneId;
+                updateDroneInfo(data);
+                drones[data.id] = data;
+                dronesChanged = true;
+
+                if (previouslySelectedDroneId) {
+                    const selectedDroneElement = document.querySelector(`.drone-info[data-drone-id='${previouslySelectedDroneId}']`);
+                    if (selectedDroneElement) {
+                        selectedDroneElement.classList.add('selected');
+                    }
+                }
+            });
+            socket.on('drone_disconnected', (drone_id, reason) => {
+                const drone_info = drones[drone_id];
+                if (!drone_info) {
+                    return;
+                }
+                // TODO: maybe display the disconnected reason
+                // drone_info['status'] = 'disconnected';
+                // drone_info['error'] = reason;
+                delete drones[drone_id];
+                dronesChanged = true;
             });
 
             const colorButtons = document.querySelectorAll('.color-button');

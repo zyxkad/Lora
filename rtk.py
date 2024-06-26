@@ -143,7 +143,7 @@ def update_drone_status(drone_id, msg):
 
     socketio.emit('drone_info', drone_info)
     drone_infos[drone_id] = drone_info
-    drone_timeout_timer = Timer(3 , mark_drone_timedout, (drone_id, drone_info))
+    drone_timeout_timer = Timer(3, lambda: mark_drone_disconnected(drone_id, drone_info, 'timeout'))
     drone_timeout_timer.start()
     drone_timeout_timers[drone_id] = drone_timeout_timer
 
@@ -163,9 +163,10 @@ def send_motor_test_command(connection, drone_id, motor_instance, throttle):
         0
     )
 
-def mark_drone_timedout(drone_id, drone_info):
-    drone_info['status'] = 'timeout'
-    socketio.emit('drone_disconnected', drone_id, 'timeout')
+def mark_drone_disconnected(drone_id, drone_info, reason):
+    drone_info['status'] = 'disconnected'
+    drone_info['error'] = reason
+    socketio.emit('drone_disconnected', drone_id, reason)
 
 def send_led_control_message(drone_id, r, g, b, duration_msec, flashes):
     target_component = 1
