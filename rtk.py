@@ -285,7 +285,7 @@ def motor_test():
                 tsting_motors[m] = deadline
                 send_motor_test_command(global_connection, d, m, throttle, duration)
     startTimer(duration, clean_testing_motors)
-    return jsonify(success=True, message='Motor test command sent.')
+    return jsonify(success=True, message='Motor test command sent.', duration=duration)
 
 
 @app.route('/change_mode', methods=['POST'])

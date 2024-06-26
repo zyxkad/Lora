@@ -582,6 +582,21 @@
             background-color: #070;
         }
 
+        @keyframes flash-bg {
+            0% {
+            }
+            50% {
+                background-color: var(--flash-bg);
+            }
+            0% {
+            }
+        }
+
+        .motor-test-motor[data-activited=true] {
+            --flash-bg: #990;
+            animation: flash-bg 1s infinite;
+        }
+
         .motor-test-motor:nth-child(1) {
             grid-area: a;
         }
@@ -1066,7 +1081,7 @@
             let dronesChanged = false;
             setInterval(() => {
                 if (dronesChanged) {
-                    updateTopbarInfo(drones);
+                    updateTopbarInfo(Object.values(drones));
                     dronesChanged = false;
                 }
             }, 500);
@@ -1181,12 +1196,13 @@
                     return;
                 }
                 confirmCheckbox.checked = false;
-                const motorIds = [];
+                const testingMotorElems = [];
                 for (const elem of testMotorSelectors) {
                     if (elem.getAttribute('data-selected')) {
-                        motorIds.push(parseInt(elem.getAttribute('data-motor-id')))
+                        testingMotorElems.push(elem);
                     }
                 }
+                const motorIds = testingMotorElems.map((elem) => parseInt(elem.getAttribute('data-motor-id')));
                 const throttle = parseFloat(document.getElementById('throttleSelect').value);
 
                 fetch('/motor_test', {
@@ -1200,6 +1216,20 @@
                 .then(data => {
                     if (data.success) {
                         console.log('Motor test command sent:', { motorIds, throttle });
+                        const duration = data.duration * 1000
+                        for (const elem of testingMotorElems) {
+                            elem.setAttribute('data-activited', 'true')
+                            elem.setAttribute('data-activite-deadline', Date.now() + duration - 100)
+                        }
+                        setTimeout(() => {
+                            const now = Date.now()
+                            for (const elem of testingMotorElems) {
+                                if (parseInt(elem.getAttribute('data-activite-deadline')) < now) {
+                                    elem.removeAttribute('data-activited')
+                                    elem.removeAttribute('data-activite-deadline')
+                                }
+                            }
+                        }, data.duration * 1000)
                     } else {
                         console.error('Error sending motor test command:', data.message);
                     }
