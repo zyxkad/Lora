@@ -84,7 +84,7 @@ def setup_rtk_connection(com_port, baud_rate):
     
 def listen_to_drones(connection):
     while True:
-        msg = connection.recv_match(type=['SYS_STATUS', 'GPS_RAW_INT', 'HEARTBEAT'], blocking=False)
+        msg = connection.recv_match(type=['SYS_STATUS', 'GPS_RAW_INT', 'HEARTBEAT'], blocking=True)
         if not msg:
             continue
         drone_id = msg.get_srcSystem()
