@@ -88,6 +88,7 @@ def setup_rtk_connection(com_port, baud_rate):
     return serial.Serial(com_port, baudrate=baud_rate, timeout=1)
     
 def listen_to_drones(connection):
+    last_update_time = time.time()
     while True:
         try:
             msg = connection.recv_match(type=['SYS_STATUS', 'GPS_RAW_INT', 'HEARTBEAT'], blocking=False)
@@ -98,6 +99,13 @@ def listen_to_drones(connection):
             continue
         drone_id = msg.get_srcSystem()
         update_drone_status(drone_id, msg)
+
+        current_time = time.time()
+        if current_time - last_update_time > 5:
+            last_update_time = current_time
+            for drone_id, drone_info in drone_infos.items():
+                socketio.emit('drone_info', drone_info)
+            drone_infos.clear()
 
 def read_and_send_rtk_data(connection, rtk_connection):
     sequence_id = 0
@@ -171,8 +179,8 @@ def update_drone_status(drone_id, msg):
             drone_info['gps_coords'] = gps_coords
 
     if changed:
-        socketio.emit('drone_info', drone_info)
-    drone_timeout_timers[drone_id] = startTimer(30, mark_drone_disconnected, drone_id, drone_info, 'timeout')
+        drone_infos[drone_id] = drone_info
+    drone_timeout_timers[drone_id] = startTimer(3, mark_drone_disconnected, drone_id, drone_info, 'timeout')
 
 def send_motor_test_command(connection, drone_id, motor_instance, throttle, duration):
     connection.mav.command_long_send(
@@ -196,7 +204,8 @@ def mark_drone_disconnected(drone_id, drone_info, reason):
     drone_info['voltage'] = '--'
     drone_info['current'] = '--'
     drone_info['gps_type'] = '--'
-    socketio.emit('drone_disconnected', [drone_id, reason])
+    #TODO add drone_disconnected event
+    # socketio.emit('drone_disconnected', [drone_id, reason])
     socketio.emit('drone_info', drone_info)
 
 def send_led_control_message(drone_id, r, g, b, duration_msec, flashes):

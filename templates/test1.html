@@ -1005,8 +1005,12 @@
                     droneInfo = document.createElement('div');
                     droneInfo.className = 'drone-info';
                     droneInfo.dataset.droneId = drone.id;
+                    let statusColor = 'red';
+                    if (drone.voltage !== undefined && drone.voltage !== '--') {
+                        statusColor = drone.voltage < 14 ? 'red' : 'green';
+                    }
                     droneInfo.innerHTML = `
-                        <div class="status-circle"></div>
+                        <div class="status-circle" style="background-color: ${statusColor};"></div>
                         <div>${drone.id}</div>
                         <div>${drone.mode || '--'}</div>
                         <div>${drone.voltage !== undefined ? drone.voltage + 'V' : '--'}</div>
