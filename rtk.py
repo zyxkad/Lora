@@ -192,7 +192,12 @@ def send_motor_test_command(connection, drone_id, motor_instance, throttle, dura
 def mark_drone_disconnected(drone_id, drone_info, reason):
     drone_info['status'] = 'disconnected'
     drone_info['error'] = reason
+    drone_info['mode'] = 'MISSING'
+    drone_info['voltage'] = '--'
+    drone_info['current'] = '--'
+    drone_info['gps_type'] = '--'
     socketio.emit('drone_disconnected', [drone_id, reason])
+    socketio.emit('drone_info', drone_info)
 
 def send_led_control_message(drone_id, r, g, b, duration_msec, flashes):
     target_component = 1
