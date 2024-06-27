@@ -325,7 +325,7 @@ def change_mode():
                 d,
                 mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
                 mode_id)
-            socketio.emit('log_message', {'data': f"Mode change command received: DroneID: {drone_id}  ModeID: {mode_id}  Mode: {flight_modes.get(mode_id, 'Unknown')}"})
+            socketio.emit('log_message', {'data': f'Mode change command received: DroneID: {drone_id}  ModeID: {mode_id}  Mode: {flight_modes.get(mode_id, "Unknown")}'})
         return jsonify(success=True, message='Mode change command sent.')
     except Exception as e:
         return jsonify(success=False, message=str(e))
