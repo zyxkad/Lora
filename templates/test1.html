@@ -498,6 +498,7 @@
         .motor-test-actions {
             display: flex;
             justify-content: center;
+            justify-content: space-evenly;
         }
 
         .motor-test-actions button {
@@ -557,7 +558,85 @@
             background-color: #555;
         }
 
+        #motor-test-drone {
+            width: 7rem;
+            height: 7rem;
+            display: grid;
+            grid-template: 
+                "d a" 3rem
+                "b c" 3rem
+                / 3rem 3rem;
+            gap: 1rem 1rem;
+        }
 
+        .motor-test-motor {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            border: 2px solid #888;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .motor-test-motor::before {
+            content: attr(data-motor-id);
+            display: inline-block;
+            width: 100%;
+            text-align: center;
+        }
+
+        .motor-test-motor[data-selected=true] {
+            background-color: #070;
+        }
+
+        @keyframes flash-bg {
+            0% {
+            }
+            50% {
+                background-color: var(--flash-bg);
+            }
+            0% {
+            }
+        }
+
+        .motor-test-motor[data-activited=true] {
+            --flash-bg: #990;
+            animation: flash-bg 1s infinite;
+        }
+
+        .motor-test-motor[data-activited=true] > .timer::before {
+            content: var(--time-left);
+            display: inline-block;
+            width: 100%;
+            text-align: center;
+            font-size: 0.7rem;
+        }
+
+        .motor-test-motor:nth-child(1) {
+            grid-area: a;
+        }
+
+        .motor-test-motor:nth-child(2) {
+            grid-area: b;
+        }
+
+        .motor-test-motor:nth-child(3) {
+            grid-area: c;
+        }
+
+        .motor-test-motor:nth-child(4) {
+            grid-area: d;
+        }
+
+        .motor-test-motor:nth-child(1),
+        .motor-test-motor:nth-child(4) {
+            border-color: #f00;
+        }
+
+        .motor-test-motor:nth-child(2),
+        .motor-test-motor:nth-child(3) {
+            border-color: #eee;
+        }
     </style>
 </head>
 <body>
@@ -624,11 +703,11 @@
                 <div class="bottom-left fixed">
                     <div id="lightControlContent" class="bottom-left-content hidden">
                         <div class="color-picker">
-                            <div class="color-button" style="background-color: red;" data-r="255" data-g="0" data-b="0"></div>
-                            <div class="color-button" style="background-color: blue;" data-r="0" data-g="0" data-b="255"></div>
-                            <div class="color-button" style="background-color: green;" data-r="0" data-g="255" data-b="0"></div>
-                            <div class="color-button" style="background-color: yellow;" data-r="255" data-g="255" data-b="0"></div>
-                            <div class="color-button" style="background-color: white;" data-r="255" data-g="255" data-b="255"></div>
+                            <div class="color-button" style="background-color: rgb(255, 0, 0);" data-r="255" data-g="0" data-b="0"></div>
+                            <div class="color-button" style="background-color: rgb(0, 0, 255);" data-r="0" data-g="0" data-b="255"></div>
+                            <div class="color-button" style="background-color: rgb(0, 255, 0);" data-r="0" data-g="255" data-b="0"></div>
+                            <div class="color-button" style="background-color: rgb(255, 255, 0);" data-r="255" data-g="255" data-b="0"></div>
+                            <div class="color-button" style="background-color: rgb(255, 255, 255);" data-r="255" data-g="255" data-b="255"></div>
                         </div>
                         <div class="actions">
                             <div class="action-button" id="flashButton">Flash</div>
@@ -663,19 +742,18 @@
                         </div>
                         <div class="motor-test-controls">
                             <div class="control-group">
-                                <label for="motorIdSelect">Motor ID</label>
-                                <select id="motorIdSelect">
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                    <option value="4">4</option>
-                                    <option value="all">All</option>
-                                </select>
+                                <div id="motor-test-drone">
+                                    <div class="motor-test-motor" data-motor-id="1"><div class="timer"></div></div>
+                                    <div class="motor-test-motor" data-motor-id="2"><div class="timer"></div></div>
+                                    <div class="motor-test-motor" data-motor-id="3"><div class="timer"></div></div>
+                                    <div class="motor-test-motor" data-motor-id="4"><div class="timer"></div></div>
+                                </div>
                             </div>
                             <div class="control-group">
                                 <label for="throttleSelect">Throttle %</label>
                                 <select id="throttleSelect">
-                                    <option value="10">10</option>
+                                    <option value="14">14</option>
+                                    <option value="15">15</option>
                                     <option value="20">20</option>
                                     <option value="30">30</option>
                                     <option value="40">40</option>
@@ -687,6 +765,7 @@
                         </div>
                         <div class="motor-test-actions">
                             <button id="startMotorTestButton">Start Test</button>
+                            <button id="stopMotorTestButton">Stop Test</button>
                         </div>
                     </div>
                     <div id="confirmationModal" class="modal hidden">
@@ -854,6 +933,18 @@
                 });
             });
 
+            const testMotorSelectors = document.getElementsByClassName('motor-test-motor');
+            for (const elem of testMotorSelectors) {
+                elem.addEventListener('click', () => {
+                    const wasSelected = elem.getAttribute('data-selected');
+                    if (wasSelected) {
+                        elem.removeAttribute('data-selected')
+                    } else {
+                        elem.setAttribute('data-selected', 'true')
+                    }
+                })
+            }
+
             function addDroneInfo(drone) {
                 const droneInfoContainer = document.getElementById('droneInfoContainer');
 
@@ -926,7 +1017,9 @@
                         <div>${drone.voltage !== undefined ? drone.voltage + 'V' : '--'}</div>
                         <div>${drone.current !== undefined ? drone.current + 'A' : '--'}</div>
                         <div>${drone.gps_type || '--'}</div>
-                        <div>${drone.gps_coords[0] !== 0 && drone.gps_coords[1] !== 0 ? `${drone.gps_coords[0]}, ${drone.gps_coords[1]}` : '--, --'}</div>
+                        <div>
+                            ${drone.gps_coords[0] !== 0 && drone.gps_coords[1] !== 0 ? `${drone.gps_coords[0]}, ${drone.gps_coords[1]}` : '--, --'}
+                        </div>
                     `;
 
                     droneInfo.addEventListener('click', function() {
@@ -980,31 +1073,6 @@
                 document.getElementById('minBattery').textContent = (minBattery !== '--') ? minBattery + 'V' : '--';
             }
 
-            function fetchDroneData() {
-                fetch('/get_battery_status')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            const batteryStatuses = Object.values(data.battery_statuses);
-
-                            // Update drone info without clearing previous data
-                            const previouslySelectedDroneId = selectedDroneId;
-                            batteryStatuses.forEach(updateDroneInfo);
-
-                            if (previouslySelectedDroneId) {
-                                const selectedDroneElement = document.querySelector(`.drone-info[data-drone-id='${previouslySelectedDroneId}']`);
-                                if (selectedDroneElement) {
-                                    selectedDroneElement.classList.add('selected');
-                                }
-                            }
-
-                            updateTopbarInfo(batteryStatuses);
-                        }
-                    });
-            }
-
-            fetchDroneData();
-            setInterval(fetchDroneData, 2000);
             const socket = io();
 
             socket.on('connect', () => {
@@ -1023,6 +1091,42 @@
                 newLog.textContent = data.data;
                 terminalOutput.appendChild(newLog);
                 terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            });
+
+            const drones = {};
+            let dronesChanged = false;
+            setInterval(() => {
+                if (dronesChanged) {
+                    updateTopbarInfo(Object.values(drones));
+                    dronesChanged = false;
+                }
+            }, 500);
+            socket.on('drone_info', (data) => {
+                // Update drone info without clearing previous data
+                const previouslySelectedDroneId = selectedDroneId;
+                updateDroneInfo(data);
+                drones[data.id] = data;
+                dronesChanged = true;
+
+                if (previouslySelectedDroneId) {
+                    const selectedDroneElement = document.querySelector(`.drone-info[data-drone-id='${previouslySelectedDroneId}']`);
+                    if (selectedDroneElement) {
+                        selectedDroneElement.classList.add('selected');
+                    }
+                }
+            });
+            socket.on('drone_disconnected', ([drone_id, reason]) => {
+                const droneInfo = drones[drone_id];
+                if (!droneInfo) {
+                    return;
+                }
+                droneInfo['mode'] = 'DISCONNECTED';
+                updateDroneInfo(droneInfo);
+                // TODO: maybe display the disconnected reason
+                // droneInfo['status'] = 'disconnected';
+                // droneInfo['error'] = reason;
+                delete drones[drone_id];
+                dronesChanged = true;
             });
 
             const colorButtons = document.querySelectorAll('.color-button');
@@ -1104,34 +1208,90 @@
                 confirmationModal.classList.remove('hidden');
             });
 
+            let activateTimer, activateCounter
             document.getElementById('confirmButton').addEventListener('click', function() {
                 const confirmCheckbox = document.getElementById('confirmCheckbox');
-                if (confirmCheckbox.checked) {
-                    const motorId = document.getElementById('motorIdSelect').value;
-                    const throttle = document.getElementById('throttleSelect').value;
-
-                    fetch('/motor_test', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        },
-                        body: new URLSearchParams({ motor_id: motorId, throttle: throttle, drone_id: selectedDroneId })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            console.log('Motor test command sent:', { motorId, throttle });
-                        } else {
-                            console.error('Error sending motor test command:', data.message);
-                        }
-                    });
-                    confirmationModal.classList.add('hidden');
+                if (!confirmCheckbox.checked) {
+                    return;
                 }
+                confirmCheckbox.checked = false;
+                const testingMotorElems = [];
+                for (const elem of testMotorSelectors) {
+                    if (elem.getAttribute('data-selected')) {
+                        testingMotorElems.push(elem);
+                    }
+                }
+                const motorIds = testingMotorElems.map((elem) => parseInt(elem.getAttribute('data-motor-id')));
+                const throttle = parseFloat(document.getElementById('throttleSelect').value);
+
+                fetch('/motor_test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ motors: motorIds, throttle: throttle, drone_id: selectedDroneId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Motor test command sent:', { motorIds, throttle });
+                        if (activateCounter) {
+                            clearInterval(activateCounter)
+                        }
+                        if (activateTimer) {
+                            clearTimeout(activateTimer)
+                        }
+                        const duration = data.duration * 1000
+                        for (const elem of testMotorSelectors) {
+                            // TODO: for somereason when we test another motor, the current testing motor's duration will be expand as well
+                            if (elem.getAttribute('data-activited')) {
+                                testingMotorElems.push(elem);
+                            }
+                        }
+                        for (const elem of testingMotorElems) {
+                            elem.setAttribute('data-activited', 'true')
+                        }
+                        let timeStart = Date.now()
+                        activateCounter = setInterval(() => {
+                            const timeLeft = duration + timeStart - Date.now()
+                            const timeLeftStr = (timeLeft / 1000).toFixed(2) + 's'
+                            for (const elem of testingMotorElems) {
+                                elem.style.setProperty('--time-left', `"${timeLeftStr}"`);
+                            }
+                        }, 50)
+                        activateTimer = setTimeout(() => {
+                            if (activateCounter) {
+                                clearInterval(activateCounter)
+                            }
+                            const now = Date.now()
+                            for (const elem of testingMotorElems) {
+                                elem.removeAttribute('data-activited')
+                            }
+                        }, duration)
+                    } else {
+                        console.error('Error sending motor test command:', data.message);
+                    }
+                });
+                confirmationModal.classList.add('hidden');
             });
 
             document.getElementById('cancelButton').addEventListener('click', function() {
                 const confirmationModal = document.getElementById('confirmationModal');
                 confirmationModal.classList.add('hidden');
+            });
+
+            document.getElementById('stopMotorTestButton').addEventListener('click', function() {
+                fetch('/stop_motor_test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ drone_id: selectedDroneId })
+                })
+                const now = Date.now()
+                for (const elem of testMotorSelectors) {
+                    elem.removeAttribute('data-activited')
+                }
             });
         });
     </script>
