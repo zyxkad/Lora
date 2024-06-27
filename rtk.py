@@ -172,7 +172,7 @@ def update_drone_status(drone_id, msg):
 
     if changed:
         socketio.emit('drone_info', drone_info)
-    drone_timeout_timers[drone_id] = startTimer(3, mark_drone_disconnected, drone_id, drone_info, 'timeout')
+    drone_timeout_timers[drone_id] = startTimer(30, mark_drone_disconnected, drone_id, drone_info, 'timeout')
 
 def send_motor_test_command(connection, drone_id, motor_instance, throttle, duration):
     connection.mav.command_long_send(
