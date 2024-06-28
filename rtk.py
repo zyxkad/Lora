@@ -106,39 +106,99 @@ def listen_to_drones(connection):
             for drone_id, drone_info in drone_infos.items():
                 socketio.emit('drone_info', drone_info)
             drone_infos.clear()
+### This is the original code
+# def read_and_send_rtk_data(connection, rtk_connection):
+#     sequence_id = 0
+#     msglen = 100
+#     while True:
+#         data = rtk_connection.read(1024)
+#         for i in range(0, len(data), msglen):
+#             chunk = data[i:i + msglen]
+#             start_time = time.time()
+#             print(f'Received {len(chunk)}, GOOD!')
+#             msgs = math.ceil(len(chunk) / msglen)
+#             for msg in range(msgs):
+#                 flags = 0
+#                 if msgs > 1:
+#                     flags = 1
+#                 flags |= (msg & 0x3) << 1
+#                 flags |= sequence_id << 3
+#                 amount = min(len(chunk) - msg * msglen, msglen)
+#                 datachunk = chunk[msg * msglen : msg * msglen + amount]
+                
+#                 connection.mav.gps_rtcm_data_send(
+#                     flags,
+#                     len(datachunk),
+#                     bytearray(datachunk.ljust(180, b'\0'))
+#                 )
+#             if msgs < 4 and len(chunk) % msglen == 0 and len(chunk) > msglen:
+#                 flags = 1 | (msgs & 0x3) << 1 | sequence_id << 3
+#                 connection.mav.gps_rtcm_data_send(
+#                     flags,
+#                     0,
+#                     bytearray(b'\0' * 180)
+#                 )
+#             sequence_id = (sequence_id + 1) & 0x1f
 
-def read_and_send_rtk_data(connection, rtk_connection):
+def read_and_send_rtk_data():
     sequence_id = 0
-    msglen = 100
+    buffer = b''
     while True:
-        data = rtk_connection.read(1024)
-        for i in range(0, len(data), msglen):
-            chunk = data[i:i + msglen]
-            start_time = time.time()
-            print(f'Received {len(chunk)}, GOOD!')
-            msgs = math.ceil(len(chunk) / msglen)
-            for msg in range(msgs):
+        data = global_rtk_connection.read(1024)
+        buffer += data
+        if len(buffer) < 3:
+            continue
+
+        i = 0
+        while i < len(buffer):
+            if len(buffer[i:i + 3]) < 3:
+                break
+
+            header = buffer[i:i + 3]
+            if header[0] != 0xD3:
+                i += 1
+                continue
+
+            length = ((header[1] & 0x03) << 8) | header[2]
+            msglen = length + 6
+
+            if len(buffer[i:i + msglen]) < msglen:
+                break
+
+            chunk = buffer[i:i + msglen]
+            print(f"Received {len(chunk)}, GOOD!")
+
+            if (len(chunk) % 180 == 0):
+                msgs = len(chunk) // 180
+            else:
+                msgs = (len(chunk) // 180) + 1
+            for a in range(msgs):
                 flags = 0
                 if msgs > 1:
                     flags = 1
-                flags |= (msg & 0x3) << 1
-                flags |= sequence_id << 3
-                amount = min(len(chunk) - msg * msglen, msglen)
-                datachunk = chunk[msg * msglen : msg * msglen + amount]
-                
-                connection.mav.gps_rtcm_data_send(
+                flags |= (a & 0x3) << 1
+                flags |= (sequence_id & 0x1f) << 3
+                amount = min(len(chunk) - a * 180, 180)
+                datachunk = chunk[a * 180 : a * 180 + amount]
+
+                global_connection.mav.gps_rtcm_data_send(
                     flags,
                     len(datachunk),
                     bytearray(datachunk.ljust(180, b'\0'))
                 )
-            if msgs < 4 and len(chunk) % msglen == 0 and len(chunk) > msglen:
-                flags = 1 | (msgs & 0x3) << 1 | sequence_id << 3
-                connection.mav.gps_rtcm_data_send(
+
+            if msgs < 4 and len(chunk) % 180 == 0 and len(chunk) > 180:
+                flags = 1 | (msgs & 0x3) << 1 | (sequence_id & 0x1f) << 3
+                global_connection.mav.gps_rtcm_data_send(
                     flags,
                     0,
-                    bytearray(b'\0' * 180)
+                    bytearray("".ljust(180, b'\0'))
                 )
-            sequence_id = (sequence_id + 1) & 0x1f
+
+            sequence_id += 1
+            i += msglen
+
+        buffer = buffer[i:]
 
 def update_drone_status(drone_id, msg):
     drone_timeout_timer = drone_timeout_timers.pop(drone_id, None)
@@ -250,7 +310,7 @@ def list_ports():
 
 @app.route('/')
 def index():
-    return render_template('test1.html', flight_modes=flight_modes)
+    return render_template('index.html', flight_modes=flight_modes)
 
 @app.route('/set_com_port', methods=['POST'])
 def set_com_port():
