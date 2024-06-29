@@ -140,11 +140,11 @@ def listen_to_drones(connection):
 #                 )
 #             sequence_id = (sequence_id + 1) & 0x1f
 
-def read_and_send_rtk_data():
+def read_and_send_rtk_data(connection, rtk_connection):
     sequence_id = 0
     buffer = b''
     while True:
-        data = global_rtk_connection.read(1024)
+        data = rtk_connection.read(1024)
         buffer += data
         if len(buffer) < 3:
             continue
@@ -180,8 +180,8 @@ def read_and_send_rtk_data():
                 flags |= (sequence_id & 0x1f) << 3
                 amount = min(len(chunk) - a * 180, 180)
                 datachunk = chunk[a * 180 : a * 180 + amount]
-
-                global_connection.mav.gps_rtcm_data_send(
+                print(f"SENT datachunk in hex: {datachunk.hex()}")
+                connection.mav.gps_rtcm_data_send(
                     flags,
                     len(datachunk),
                     bytearray(datachunk.ljust(180, b'\0'))
@@ -189,7 +189,7 @@ def read_and_send_rtk_data():
 
             if msgs < 4 and len(chunk) % 180 == 0 and len(chunk) > 180:
                 flags = 1 | (msgs & 0x3) << 1 | (sequence_id & 0x1f) << 3
-                global_connection.mav.gps_rtcm_data_send(
+                connection.mav.gps_rtcm_data_send(
                     flags,
                     0,
                     bytearray("".ljust(180, b'\0'))
