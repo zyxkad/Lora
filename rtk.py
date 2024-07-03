@@ -75,12 +75,13 @@ def log(*args, sep=' ', to_file=True):
     socketio.emit('log_message', {'data': line})
     if to_file:
         log_file.write(line_unstyled)
+        log_file.flush()
     sys.stderr.write(line)
 
 class LogHandler(logging.Handler):
     def emit(self, record):
         log_entry = self.format(record)
-        log(log_entry, to_file=False)
+        log(log_entry, to_file=True)
 
 logger.addHandler(LogHandler())
 
@@ -450,6 +451,7 @@ def cleanup():
 
 if __name__ == '__main__':
     try:
+        log('=' * 16 + ' START ' + '=' * 16)
         main()
     finally:
         cleanup()
