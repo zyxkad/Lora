@@ -237,6 +237,7 @@ def update_drone_status(drone_id, msg):
             drone_info['current'] = current
     elif msg.get_type() == 'GPS_RAW_INT':
         gps_type = msg.fix_type
+        log('gps_type for', drone_id, 'is', gps_type)
         gps_coords = (msg.lat / 1e7, msg.lon / 1e7)
         if drone_info['gps_type'] != gps_type or drone_info['gps_coords'] != gps_coords:
             changed = True
