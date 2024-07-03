@@ -73,7 +73,8 @@ def log(*args, sep=' ', to_file=True):
     line = datetime.now().strftime('[%H:%M:%S]') + ': ' + line + '\n'
     line_unstyled = click.unstyle(line)
     socketio.emit('log_message', {'data': line})
-    log_file.write(line_unstyled)
+    if to_file:
+        log_file.write(line_unstyled)
     sys.stderr.write(line)
 
 class LogHandler(logging.Handler):
