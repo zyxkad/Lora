@@ -200,6 +200,13 @@ def read_and_send_rtk_data(connection, rtk_connection):
                     len(datachunk),
                     bytearray(datachunk.ljust(180, b'\0'))
                 )
+            if msgs < 4 and len(chunk) % 180 == 0 and len(chunk) > 180:
+                flags = 1 | (msgs & 0x3) << 1 | (sequence_id & 0x1f) << 3
+                connection.mav.gps_rtcm_data_send(
+                    flags,
+                    0,
+                    bytearray(b"\0" * 180)
+                )
 
             sequence_id += 1
             i += msglen
