@@ -69,7 +69,7 @@ logger = logging.getLogger('werkzeug')
 logger.setLevel(logging.INFO)
 
 def log(*args, sep=' ', to_file=True):
-    line = ' '.join(map(str, args))
+    line = sep.join(map(str, args))
     line = datetime.now().strftime('[%H:%M:%S]') + ': ' + line + '\n'
     line_unstyled = click.unstyle(line)
     socketio.emit('log_message', {'data': line})
