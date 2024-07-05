@@ -58,6 +58,7 @@ testing_motors_lock = Lock()
 socketio = SocketIO(app)
 global_connection = None
 global_rtk_connection = None
+maxLoraRTKLen = 100
 motor_test_duration = 10
 rtk_status = {'satellites_visible': 0, 'survey_in_progress': True, 'rtk_precision': None}
 log = logging.getLogger('werkzeug')
@@ -101,7 +102,7 @@ def listen_to_drones(connection):
         update_drone_status(drone_id, msg)
 
         current_time = time.time()
-        if current_time - last_update_time > 5:
+        if current_time - last_update_time > 1:
             last_update_time = current_time
             for drone_id, drone_info in drone_infos.items():
                 socketio.emit('drone_info', drone_info)
@@ -168,18 +169,19 @@ def read_and_send_rtk_data(connection, rtk_connection):
             chunk = buffer[i:i + msglen]
             print(f"Received {len(chunk)}, GOOD!")
 
-            if (len(chunk) % 180 == 0):
-                msgs = len(chunk) // 180
-            else:
-                msgs = (len(chunk) // 180) + 1
+            msgs = math.ceil(len(chunk) / maxLoraRTKLen)
+            # if (len(chunk) % 180 == 0):
+            #     msgs = len(chunk) // 180
+            # else:
+            #     msgs = (len(chunk) // 180) + 1
             for a in range(msgs):
                 flags = 0
                 if msgs > 1:
                     flags = 1
                 flags |= (a & 0x3) << 1
                 flags |= (sequence_id & 0x1f) << 3
-                amount = min(len(chunk) - a * 180, 180)
-                datachunk = chunk[a * 180 : a * 180 + amount]
+                amount = min(len(chunk) - a * maxLoraRTKLen, maxLoraRTKLen)
+                datachunk = chunk[a * maxLoraRTKLen : a * maxLoraRTKLen + amount]
                 print(f"SENT datachunk in hex: {datachunk.hex()}")
                 connection.mav.gps_rtcm_data_send(
                     flags,
@@ -187,7 +189,7 @@ def read_and_send_rtk_data(connection, rtk_connection):
                     bytearray(datachunk.ljust(180, b'\0'))
                 )
 
-            if msgs < 4 and len(chunk) % 180 == 0 and len(chunk) > 180:
+            if msgs < 4 and len(chunk) % maxLoraRTKLen == 0 and len(chunk) > maxLoraRTKLen:
                 flags = 1 | (msgs & 0x3) << 1 | (sequence_id & 0x1f) << 3
                 connection.mav.gps_rtcm_data_send(
                     flags,
