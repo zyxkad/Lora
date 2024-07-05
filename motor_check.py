@@ -42,17 +42,29 @@ def process_folders(base_folder):
     for folder in os.listdir(base_folder):
         folder_path = os.path.join(base_folder, folder)
         if os.path.isdir(folder_path) and folder not in ['good', 'bad']:
-            for file in os.listdir(folder_path):
-                if file.startswith('battery_info') and file.endswith('.csv'):
-                    file_path = os.path.join(folder_path, file)
-                    data = pd.read_csv(file_path)
-                    drone_id = data['drone_id'].iloc[0]
-                    result = analyze_battery_data(file_path)
-                    if result == 'good':
-                        shutil.move(folder_path, os.path.join(good_folder, folder))
-                    else:
-                        shutil.move(folder_path, os.path.join(bad_folder, folder))
-                        bad_drones.append((folder, drone_id))
+            for sub_folder in os.listdir(folder_path):
+                sub_folder_path = os.path.join(folder_path, sub_folder)
+                if os.path.isdir(sub_folder_path):
+                    for file in os.listdir(sub_folder_path):
+                        if file.startswith('battery_info') and file.endswith('.csv'):
+                            file_path = os.path.join(sub_folder_path, file)
+                            result = analyze_battery_data(file_path)
+                            destination_folder = good_folder if result == 'good' else bad_folder
+                            target_path = os.path.join(destination_folder, sub_folder)
+
+                            # # 如果目标路径已存在，重命名目标路径
+                            # if os.path.exists(target_path):
+                            #     base_name = target_path
+                            #     counter = 1
+                            #     while os.path.exists(target_path):
+                            #         target_path = f"{base_name}_{counter}"
+                            #         counter += 1
+
+                            shutil.move(sub_folder_path, target_path)
+
+                            if result == 'bad':
+                                drone_id = file.split('_')[1]
+                                bad_drones.append((sub_folder, drone_id))
 
     if bad_drones:
         bad_drones_file = os.path.join(bad_folder, 'bad_drones.csv')
