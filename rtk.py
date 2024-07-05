@@ -14,9 +14,14 @@ import struct
 import subprocess
 import sys
 import time
+import click
 
 import serial
 import serial.tools.list_ports
+
+if not os.path.exists('logs'):
+    os.mkdir('logs')
+log_file = open(os.path.join('logs', datetime.now().strftime('%Y-%M-%d-%H-%M.log')), 'a')
 
 app = Flask(__name__)
 app.secret_key = 'AUAVDRONE'
@@ -60,16 +65,25 @@ global_connection = None
 global_rtk_connection = None
 motor_test_duration = 10
 rtk_status = {'satellites_visible': 0, 'survey_in_progress': True, 'rtk_precision': None}
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.INFO)
+logger = logging.getLogger('werkzeug')
+logger.setLevel(logging.INFO)
+
+def log(*args, sep=' ', to_file=True):
+    line = sep.join(map(str, args))
+    line = datetime.now().strftime('[%H:%M:%S]') + ': ' + line + '\n'
+    line_unstyled = click.unstyle(line)
+    socketio.emit('log_message', {'data': line})
+    if to_file:
+        log_file.write(line_unstyled)
+        log_file.flush()
+    sys.stderr.write(line)
 
 class LogHandler(logging.Handler):
     def emit(self, record):
         log_entry = self.format(record)
-        socketio.emit('log_message', {'data': log_entry})
-        print(log_entry)
+        log(log_entry, to_file=True)
 
-log.addHandler(LogHandler())
+logger.addHandler(LogHandler())
 
 def startTimer(interval, function, /, *args, **kwargs):
     timer = Timer(interval, function, args, kwargs)
@@ -106,6 +120,7 @@ def listen_to_drones(connection):
             for drone_id, drone_info in drone_infos.items():
                 socketio.emit('drone_info', drone_info)
             drone_infos.clear()
+
 ### This is the original code
 # def read_and_send_rtk_data(connection, rtk_connection):
 #     sequence_id = 0
@@ -125,7 +140,6 @@ def listen_to_drones(connection):
 #                 flags |= sequence_id << 3
 #                 amount = min(len(chunk) - msg * msglen, msglen)
 #                 datachunk = chunk[msg * msglen : msg * msglen + amount]
-                
 #                 connection.mav.gps_rtcm_data_send(
 #                     flags,
 #                     len(datachunk),
@@ -186,13 +200,12 @@ def read_and_send_rtk_data(connection, rtk_connection):
                     len(datachunk),
                     bytearray(datachunk.ljust(180, b'\0'))
                 )
-
             if msgs < 4 and len(chunk) % 180 == 0 and len(chunk) > 180:
                 flags = 1 | (msgs & 0x3) << 1 | (sequence_id & 0x1f) << 3
                 connection.mav.gps_rtcm_data_send(
                     flags,
                     0,
-                    bytearray("".ljust(180, b'\0'))
+                    bytearray(b"\0" * 180)
                 )
 
             sequence_id += 1
@@ -232,6 +245,7 @@ def update_drone_status(drone_id, msg):
             drone_info['current'] = current
     elif msg.get_type() == 'GPS_RAW_INT':
         gps_type = msg.fix_type
+        log('gps_type for', drone_id, 'is', gps_type)
         gps_coords = (msg.lat / 1e7, msg.lon / 1e7)
         if drone_info['gps_type'] != gps_type or drone_info['gps_coords'] != gps_coords:
             changed = True
@@ -319,7 +333,7 @@ def set_com_port():
     com_port = data.get('com_port')
     global_connection = setup_connection(com_port)
     startThread(listen_to_drones, global_connection)
-    socketio.emit('log_message', {'data': f'COM port {com_port} set'})
+    log(f'COM port {com_port} set')
     return jsonify(success=True, message='COM port set and listening started.')
 
 @app.route('/set_rtk_port', methods=['POST'])
@@ -331,7 +345,7 @@ def set_rtk_port():
     if rtk_com_port:
         global_rtk_connection = setup_rtk_connection(rtk_com_port, baudrate)
         startThread(read_and_send_rtk_data, global_connection, global_rtk_connection)
-    socketio.emit('log_message', {'data': f'RTK port {rtk_com_port} set with baudrate {baudrate} and listening started.'})
+    log(f'RTK port {rtk_com_port} set with baudrate {baudrate} and listening started.')
     return jsonify(success=True, message='RTK port set and listening started.')
 
 @app.route('/motor_test', methods=['POST'])
@@ -345,7 +359,7 @@ def motor_test():
         return jsonify(success=False, message='Not connected')
     drones = []
     if drone_id == 'all':
-        socketio.emit('log_message', {'data': 'send to all drones start'})
+        log('send to all drones start')
         drones = get_active_drones()
     else:
         drones = [int(drone_id)]
@@ -370,7 +384,7 @@ def stop_motor_test():
     drone_id = payload['drone_id']
     drones = []
     if drone_id == 'all':
-        socketio.emit('log_message', {'data': 'send to all start'})
+        log('send to all start')
         drones = get_active_drones()
     else:
         drones = [int(drone_id)]
@@ -389,7 +403,7 @@ def change_mode():
         return jsonify(success=False, message='Connection not established.')
     drones = []
     if drone_id == 'all':
-        socketio.emit('log_message', {'data': 'send to all start'})
+        log('send to all start')
         drones = get_active_drones()
     else:
         drones = [int(drone_id)]
@@ -399,7 +413,7 @@ def change_mode():
                 d,
                 mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
                 mode_id)
-            socketio.emit('log_message', {'data': f'Mode change command received: DroneID: {drone_id}  ModeID: {mode_id}  Mode: {flight_modes.get(mode_id, "Unknown")}'})
+            log(f'Mode change command received: DroneID: {drone_id}  ModeID: {mode_id}  Mode: {flight_modes.get(mode_id, "Unknown")}')
         return jsonify(success=True, message='Mode change command sent.')
     except Exception as e:
         return jsonify(success=False, message=str(e))
@@ -420,14 +434,14 @@ def change_color():
     flashes = int(flashes)
     drones = []
     if drone_id == 'all':
-        socketio.emit('log_message', {'data': 'send to all start'})
+        log('send to all start')
         drones = get_active_drones()
     else:
-        socketio.emit('log_message', {'data': 'send to one start'})
+        log('send to one start')
         drones = [int(drone_id)]
     for d in drones:
         send_led_control_message(d, r, g, b, duration, flashes)
-        socketio.emit('log_message', {'data': f'Color change command received: DroneID: {d}  RGB: ({r}, {g}, {b}), Duration: {duration} ms, Flashes: {flashes}'})
+        log(f'Color change command received: DroneID: {d}  RGB: ({r}, {g}, {b}), Duration: {duration} ms, Flashes: {flashes}')
 
     return jsonify(success=True, message='Color change command sent.')
 
@@ -440,9 +454,11 @@ def main():
 
 def cleanup():
     stop_all_testing_motors()
+    log_file.close()
 
 if __name__ == '__main__':
     try:
+        log('=' * 16 + ' START ' + '=' * 16)
         main()
     finally:
         cleanup()
