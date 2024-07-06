@@ -21,7 +21,7 @@ import serial.tools.list_ports
 
 if not os.path.exists('logs'):
     os.mkdir('logs')
-log_file = open(os.path.join('logs', datetime.now().strftime('%Y-%M-%d-%H-%M.log')), 'a')
+log_file = open(os.path.join('logs', datetime.now().strftime('%Y-%m-%d-%H-%M.log')), 'a')
 
 app = Flask(__name__)
 app.secret_key = 'AUAVDRONE'
